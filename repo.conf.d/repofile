@@ -12,7 +12,7 @@
 
   rhel7.iso:
     type: file
-    #uri: http://pxe.uio.no/iso/rhel-workstation-7.1-x86_64-dvd.iso
+    uri: http://pxe.uio.no/iso/rhel-workstation-7.1-x86_64-dvd.iso
     checksum: 0f48ed77b53e135a5c3a374c6893b938
 
   uio-free:
