@@ -1,0 +1,22 @@
+---
+    rootproperty: netapp1
+    is_netapp: Yes
+    netapp_mode: 7mode
+    is_metro_cluster: Yes
+    is_vseries: Yes
+    is_flexcache_origin: No
+    snapmirror:
+      enabled: Yes
+      destination: Yes
+      lag_threshold: 2300
+    physical_interfaces:
+      e0a: netapp1-e0
+      e0b: netapp1-e1
+      mgt: netapp1-mgt
+    volumes:
+      - volume: vol1
+        reserve: 50
+        sched: 6 42 0
+      - volume: vol2
+        reserve: 20
+        sched: 0 3 0
