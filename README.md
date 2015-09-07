@@ -1,7 +1,6 @@
-#Repo
+# Repo
 #
-# Scripts to maintain a local copy of a set of external repositories, and then present 
-# a controlled test- and production-environment from timebased snapshots.
+# Scripts to maintain a local copy of a set of external repositories, and then present a controlled test- and production-environment from timebased snapshots.
 
 The main hierarchy is controlled by a simple yaml-file, one set of options for each
 external source. These sources might be of varying types, like YUM and GIT repositories,
