@@ -123,9 +123,9 @@ snapshot_init()
 {
     datedir=`date +%Y-%m-%d-%H%M`
     rsync -a $CLONEDIR/ $SNAPSHOTSDIR/$datedir
-    if [ -L $SNAPSHOTSDIR/current ]; then
+    if [ -L $SNAPSHOTSDIR/current ]; then       # if a symlink just remove it
         rm $SNAPSHOTSDIR/current;
-    else
+    elif [ -e $SNAPSHOTSDIR/current ]; then     # otherwise let it be and leave decision to user
         echo "Could not initialize the 'current' pointer"
         echo "Remove obstruction and manually create a link:"
         echo "ln -s $SNAPSHOTSDIR/$datedir $SNAPSHOTSDIR/current"
@@ -139,7 +139,7 @@ snapshot_init()
 snapshot()
 {
     datedir=`date +%Y-%m-%d-%H%M`
-    rsync -a --link-dir=$SNAPSHOTSDIR/current $CLONDEDIR/ $SNAPSHOTSDIR/$datedir
+    rsync -a --link-dest=$SNAPSHOTSDIR/current $CLONEDIR/ $SNAPSHOTSDIR/$datedir
     rm $SNAPSHOTSDIR/current
     ln -s $SNAPSHOTSDIR/$datedir $SNAPSHOTSDIR/current
 }
