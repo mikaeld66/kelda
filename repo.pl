@@ -148,9 +148,11 @@ sub usage  {
     print "Usage:\n\n";
     print $usage->text,"\n";
     print "Commands:\n\n";
-    print "'sync':  Update local repositories from external sources (default if no command given)\n";
-    print "'test':  Set up test repository (testrepofile required)\n";
-    print "'prod':  Set up prod repository (test- _and_ prod-repofiles required)\n";
+    print "'sync' [repoid ...]:  Update local repositories from external sources (default if no command given)\n";
+    print "                      The optional arguments 'repoid' refers to one or more ids in the configuration to fetch.\n";
+    print "                      If none provided all external sources are retrieved.\n";
+    print "'test'             :  Set up test repository (testrepofile required)\n";
+    print "'prod'             :  Set up prod repository (test- _and_ prod-repofiles required)\n";
     print "\n";
     return 0;
 }
@@ -180,7 +182,7 @@ if( $opt->yumconf      )  { $YUMCONFIG  = $opt->yumconf; }
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
 given( $command )  {
-    when( 'sync' )  { sync(); }
+    when( 'sync' )  { shift; sync(@ARGV); }
     when( 'test' )  { test(); }
     when( 'prod' )  { prod(); }
     default         { print "\nUnknown command!\n"; usage(); }
@@ -189,6 +191,8 @@ given( $command )  {
 
 # command: sync -- updates/initializes all repositories listed in 'repofile'
 sub sync  {
+    my @ids = defined $_[0] ? @_ : () ;                  # specific repo(s) to fetch or all?
+
 	# read configuration ("profile")
 	if($DEBUG)  {
 	    yaml_file_ok("$CONFIG", "$CONFIG is a valid YAML file\n");
@@ -204,7 +208,8 @@ sub sync  {
 	#   - ensure repo subdirectory exists
 	#   - call relevant handler
 	#
-	for my $id ( keys %{ $yaml->[0] } )  {
+    if( ! ( @ids ) )  { @ids = keys %{ $yaml->[0] }; }          # if no ids provided use all from configuration
+	for my $id ( @ids )  {
 	    my $type = $yaml->[0]{$id}{'type'};                     # for simplification of code
 
 	    # sanity check: all repo handlers must have type defined
