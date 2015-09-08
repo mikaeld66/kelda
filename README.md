@@ -23,10 +23,10 @@ serving these directories to the consumer.
 
 A Perl-script which handles the main parts of the setup. The supported commands are:
 
-- help: *short usage description*
-- sync: *seeds or updates the local main repository hierarchy based on given configuration (default: "*repo.conf.d/repofile*")*
-- test: *set up links in the test directory pointing to snapshots as configured (default in "*repo.conf.d/repofile.test*")*
-- prod: *set up links in the prod directory pointing to snapshots as configured (default in "*repo.conf.d/repofile.prod*")*
+- **help**: *short usage description*
+- **sync**: *seeds or updates the local main repository hierarchy based on given configuration (default: "*repo.conf.d/repofile*")*
+- **test**: *set up links in the test directory pointing to snapshots as configured (default in "*repo.conf.d/repofile.test*")*
+- **prod**: *set up links in the prod directory pointing to snapshots as configured (default in "*repo.conf.d/repofile.prod*")*
 
 ### sync
 
@@ -112,4 +112,43 @@ the test configuration will lead to the removal of any corresponding link in the
 
 ## Administration wrapper: repoadmin.sh
 
----> FIXME <---
+This Bash script is a convience wrapper around the main Perl script. It is ment for cron jobs or manual administration of routine tasks. The script has routines
+for initializing the system and calling the main script with default values for all normal procedures.
+
+### commands
+
+This commands are supported by the script:
+
+- **init**        : *initialize directory structure and initial retrieval of source*
+- **clone**       : *clone main repo, keep backup of altered files*
+- **snapshot**    : *create time stamped backups (hardlinked) of clone*
+- **setup_test**  : *manipulate directory links in test repository*
+- **setup_prod**  : *manipulate directory links in production repository*
+
+
+The script assumes the top level directory is the same for all parts of the system, that is: the main repo hierarchy, the snapshots and the test- and production environment.
+
+
+## Installation procedure
+
+The recommended procedure for setting up the repository system:
+
+1. Decide on the file area where all source and copies are to be stored. The size must be several times the sum of all external sources.
+2. Write a *repofile* to configure the repository system, defining all external sources
+3. Alter the *rootdir* definitions in the two scripts to reflect the storage area set up in 1)
+4. Initialize and seed the repositories: **readmin.sh init**
+5. Check that *repo*, *clone*, *snapshot*, *test* and *repo* directories exists, that the two first mentioned are full copies of each other and have all the expected sources and 
+   that the *snapshot* directory contains a timestamped copy.
+6. Set up the test configuration by creating a *repofile.test* (see example file for syntax) pointing to the snapshot repos
+7. Set up the initial test environment: **repoadmin.sh setup_test**
+8. The *test* directory should now contain symbolic links for each repo in the configuration
+9. Set up the production configuration by creating a *repofile.prod* (see example file for syntax) pointing to the snapshot repos (remember the same lines must exist in the test configuration!)
+10. Set up the initial production environment: **repoadmin.sh setup_prod**
+11. The *prod* directory should now contain symbolic links for each repo in the configuration
+
+After this one might run **repoadmin.sh snapshot** to create a new snapshot to get some more alternatives to experiment with. This will not consume much storage space as it will hardlink to previous snapshot. If there is a need to start from scratch just recursively delete the top level directory.
+
+When everything is configured and tested, set up for instance cron jobs to run the *sync* and/or *snapshot* commands regurarly.
+
+Lastly set up something to serve the test and prod areas, commonly this would be via a web service, which should be a simple task. But that is beyond this project and left for the user.
+
