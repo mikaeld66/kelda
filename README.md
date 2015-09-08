@@ -136,7 +136,7 @@ The recommended procedure for setting up the repository system:
 1. Decide on the file area where all source and copies are to be stored. The size must be several times the sum of all external sources.
 2. Write a *repofile* to configure the repository system, defining all external sources
 3. Alter the *rootdir* definitions in the two scripts to reflect the storage area set up in 1)
-4. Initialize and seed the repositories: **readmin.sh init**
+4. Initialize and seed the repositories: **repoadmin.sh init**
 5. Check that *repo*, *clone*, *snapshot*, *test* and *repo* directories exists, that the two first mentioned are full copies of each other and have all the expected sources and 
    that the *snapshot* directory contains a timestamped copy.
 6. Set up the test configuration by creating a *repofile.test* (see example file for syntax) pointing to the snapshot repos
