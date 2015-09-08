@@ -1,6 +1,6 @@
 # Repo
 #
-# Scripts to maintain a local copy of a set of external repositories, and then present a controlled test- and production-environment from timebased snapshots.
+**Scripts to maintain a local copy of a set of external repositories, and then present a controlled test- and production-environment from timebased snapshots.**
 
 The main hierarchy is controlled by a simple yaml-file, one set of options for each
 external source. These sources might be of varying types, like YUM and GIT repositories,
@@ -19,14 +19,14 @@ serving these directories to the consumer.
 
 
 
-## Main script: 'repo.pl'
+## Main script: repo.pl
 
 A Perl-script which handles the main parts of the setup. The supported commands are:
 
-- help: short usage description
-- sync: seeds or updates the local main repository hierarchy based on given configuration (default: "repo.conf.d/repofile")
-- test: set up links in the test directory pointing to snapshots as configured (default in "repo.conf.d/repofile.test")
-- prod: set up links in the prod directory pointing to snapshots as configured (default in "repo.conf.d/repofile.prod")
+- help: *short usage description*
+- sync: *seeds or updates the local main repository hierarchy based on given configuration (default: "*repo.conf.d/repofile*")*
+- test: *set up links in the test directory pointing to snapshots as configured (default in "*repo.conf.d/repofile.test*")*
+- prod: *set up links in the prod directory pointing to snapshots as configured (default in "*repo.conf.d/repofile.prod*")*
 
 ### sync
 
@@ -46,15 +46,15 @@ To expand the universe of methods for retrieving the sources, just add a subrout
 name of the type which will be used in the configuration ("repofile"). Nothing else has to be altered in the script for this
 new method to be available! The routine will be called with two arguments:
 
-1. the 'id' (the name of the repo and uniq identifier in the yaml file)
-2. a hash with all options provided for this section, no filtering
+1. **id**: *the name of the repo and uniq identifier in the yaml file*
+2. *a hash with all options provided for this section, no filtering*
 
 #### Current methods supported
 
 - GIT
     - type: *git*
     - required arguments:
-        - uri
+        - **uri**
 
 - YUM
     - type: *yum*
@@ -66,19 +66,19 @@ new method to be available! The routine will be called with two arguments:
 - FILE
     - type: *file*
     - required arguments:
-        - uri
+        - **uri**
     - optional arguments:
-        - checksum: *If not provided the file is ALLWAYS fetched, otherwise the checksum is first verified if file exists locally*
+        - **checksum**: *If not provided the file is ALLWAYS fetched, otherwise the checksum is first verified if file exists locally*
 
 - RSYNC
     - type: *rsync*
     - required arguments:
-        - uri
+        - **uri**
 
 - COMMAND
     - type: *exec*
     - required arguments:
-        - exec: *Command to be executed verbatim. It is assumed the script is never runned as a web service etc!*
+        - **exec**: *Command to be executed verbatim. It is assumed the script is never runned as a web service etc!*
 
 
 ### test
@@ -90,12 +90,12 @@ the configuration file. All links already in place are removed before the new on
 any more is unpresented from the consumer.
 
 - required arguments:
-    - rootdir: *This is the directory under which the "top level" directory is created. If no directory named 'test' exists here, it is created. Beneath this 
+    - **rootdir**: *This is the directory under which the "top level" directory is created. If no directory named 'test' exists here, it is created. Beneath this 
                there will be a link for every line specified in the configuration file.*
 
-- otional arguments:
-    *For each repository which should be publized one line relative to the 'snapshot'-directory. That is; use the form "<YYYY-MM-DD/[repo]>".
-    If the source directory does not exist the link will _not_ be created.*
+- optional arguments:
+    - *For each repository which should be publized one line relative to the 'snapshot'-directory. That is; use the form "*<YYYY-MM-DD/[repo]>*".
+      If the source directory does not exist the link will _not_ be created.*
 
 ### prod
 
@@ -110,6 +110,6 @@ the test configuration will lead to the removal of any corresponding link in the
 
 
 
-## Administration wrapper: 'repoadmin.sh'
+## Administration wrapper: repoadmin.sh
 
 ---> FIXME <---
