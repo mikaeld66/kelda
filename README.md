@@ -17,6 +17,7 @@ separate and simple setup files, which mainly just lists the snapshot to present
 How "test" and "prod" is accessed is left to the user, but it seems natural to set up a web server
 serving these directories to the consumer.
 
+**kelda: old norse for "source" (norwegian: "kilde")**
 
 
 ## Main script: repo.pl
