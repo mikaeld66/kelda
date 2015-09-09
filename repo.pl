@@ -12,7 +12,6 @@ use YAML::Tiny;
 use Getopt::Long::Descriptive;
 use File::Basename;
 use Digest::MD5 qw(md5_hex);
-use List::MoreUtils;
 
 Readonly my $FALSE => 0;
 Readonly my $TRUE  => 1;
@@ -191,7 +190,7 @@ given( $command )  {
 
 # command: sync -- updates/initializes all repositories listed in 'repofile'
 sub sync  {
-    my @ids = defined $_[0] ? @_ : () ;                  # specific repo(s) to fetch or all?
+    my @ids = defined $_[0] ? @_ : () ;                     # specific repo(s) to fetch or all?
 
 	# read configuration ("profile")
 	if($DEBUG)  {
@@ -208,14 +207,13 @@ sub sync  {
 	#   - ensure repo subdirectory exists
 	#   - call relevant handler
 	#
-    if( ! ( @ids ) )  { @ids = keys %{ $yaml->[0] }; }          # if no ids provided use all from configuration
+    if( ! ( @ids ) )  { @ids = keys %{ $yaml->[0] }; }      # if no ids provided use all from configuration
 	for my $id ( @ids )  {
-	    my $type = $yaml->[0]{$id}{'type'};                     # for simplification of code
+	    my $type = $yaml->[0]{$id}{'type'};                 # for simplification of code
 
-	    # sanity check: all repo handlers must have type defined
-	    if($type)  {
+	    if($type)  {                                        # sanity check: all repo handlers must have type defined
 	        my $repocreated = reporoot("$rootdir/$id");
-	        if(defined &{$type})  {                             # check if appropriate handler routine is defined
+	        if(defined &{$type})  {                         # check if appropriate handler routine is defined
 	            $type->($id, $yaml->[0]{$id});
 	        } else  {
 	            error("Handler for type --> $type <-- does not exist. Skipping...");
@@ -252,7 +250,7 @@ sub test  {
         if( $link =~ /^\s*rootdir:/x )  { next; }           # skip rootdir config line
         my ( $source, $repo ) = split( /\//x, $link );
         chomp $repo if $repo;
-        if( $repo and $source and ! $oldrepo{"$repo"} )  {
+        if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEBUG)  {
                 info( "Linking $root/$TESTDIR/$repo from $root/$SNAPSHOTSDIR/$source/$repo" );
             } else  {
@@ -308,7 +306,7 @@ sub prod  {
         if( $link =~ /^\s*rootdir:/x )  { next; }             # skip rootdir config line
         my ( $source, $repo ) = split( /\//x, $link );
         chomp $repo if $repo;
-        if( $repo and $source and ! $oldrepo{"$repo"} )  {
+        if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             # don't allow links not also specified in test repo configuration
             if( ( ! grep { /$link/x } @testconfig) )  {
 #my $a = any { /$link/x } ("a", "b");
