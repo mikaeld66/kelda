@@ -109,6 +109,17 @@ beeing that any source presented to the production environment must have been th
 the test configuration will lead to the removal of any corresponding link in the production environment!
 
 
+## Perl modules
+
+The script require a number of modules, some of which might not be installed on the OS by default. Among these are:
+
+- YAML::Tiny
+- Getopt::Long::Descriptive
+- Readonly
+- Test::YAML::Valid
+
+The latter is only for DEBUG mode.
+
 
 ## Administration wrapper: repoadmin.sh
 
