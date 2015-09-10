@@ -16,16 +16,11 @@ use Digest::MD5 qw(md5_hex);
 Readonly my $FALSE => 0;
 Readonly my $TRUE  => 1;
 
-my $DEBUG        = $FALSE;
-my $CONFIGDIR    = "/opt/scm/git/norcams/mikaeld66-repo/repo.conf.d";   # default configuration directory
-my $CONFIG       = "$CONFIGDIR/repofile";                               # default main configuration file name
-my $TESTCONFIG   = "$CONFIGDIR/repofile.test";                          # default test repo configuration
-my $PRODCONFIG   = "$CONFIGDIR/repofile.prod";                          # default prod repo configuration
-my $YUMCONFIG    = "$CONFIGDIR/yum.conf.d/yum.conf";                    # default yum configuration for external repositories
+my $DEBUG        = $TRUE;
+my $CONFIGDIR    = "/etc/kelda";                # default top level system-wide configuration directory
 my $SNAPSHOTSDIR = "snapshots";
 my $TESTDIR      = "test";
 my $PRODDIR      = "prod";
-my $yaml;                                       # content of main configuration file ('repofile')
 my $rootdir;                                    # top level local repository directory
 my $command;                                    # command for script
 my $opt;                                        # for argument and options handling
@@ -133,7 +128,7 @@ sub reporoot  {
     my $created = $FALSE;
 
     if( ! -d $root )  {
-        if( ! mkdir( $root ) )  {
+        if( ! run_systemcmd( "mkdir $root" ) )  {           # not using Perl 'mkdir' since it can not create '-p' style and also fails if dir already exists
             croak "Can not create top level directory '$root', aborting\n";
         }
         $created = $TRUE;
@@ -160,9 +155,14 @@ sub usage  {
 #
 # Main section starts here
 #
+if($DEBUG)  {
+    print "repo.pl invoked like this:\n";
+    print "$0 @ARGV\n";
+}
+
 ( $opt, $usage ) = describe_options(
     'repo %o [command]',
-    [ 'repofile|r=s',     "Main repofile (external sources etc)" ],
+    [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
     [ 'yumconf|y=s',      "Yum configuration (external repositories)" ],
@@ -173,7 +173,16 @@ if($opt->help)  {
     usage();
     exit 0;
 }
-if( $opt->repofile     )  { $CONFIG     = $opt->repofile; }
+
+if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir; }
+
+# we set these here in case the caller provided an alternative location
+my $CONFIG       = "$CONFIGDIR/config";                     # generic configuration
+my $REPOCONFIG   = "$CONFIGDIR/repofile";                   # default main repo configuration file name
+my $TESTCONFIG   = "$CONFIGDIR/repofile.test";              # default test repo configuration
+my $PRODCONFIG   = "$CONFIGDIR/repofile.prod";              # default prod repo configuration
+my $YUMCONFIG    = "$CONFIGDIR/yum.conf.d/yum.conf";        # default yum configuration for external repositories
+
 if( $opt->testrepofile )  { $TESTCONFIG = $opt->testrepofile; }
 if( $opt->prodrepofile )  { $PRODCONFIG = $opt->prodrepofile; }
 if( $opt->yumconf      )  { $YUMCONFIG  = $opt->yumconf; }
@@ -191,30 +200,33 @@ given( $command )  {
 # command: sync -- updates/initializes all repositories listed in 'repofile'
 sub sync  {
     my @ids = defined $_[0] ? @_ : () ;                     # specific repo(s) to fetch or all?
+    my $repoyaml;                                           # content of main repo configuration file ('repofile')
+    my $cfgyaml;                                            # generic configuration
 
 	# read configuration ("profile")
 	if($DEBUG)  {
-	    yaml_file_ok("$CONFIG", "$CONFIG is a valid YAML file\n");
+	    yaml_file_ok("$REPOCONFIG", "$REPOCONFIG is a valid YAML file\n");
 	}
 
-	$yaml = YAML::Tiny->read( "$CONFIG" );
+	$repoyaml = YAML::Tiny->read( "$REPOCONFIG" );
+    $cfgyaml = YAML::Tiny->read( "$CONFIG" );
 
 	# Ensure existence of root repositiory directory
-	$rootdir = $yaml->[0]{'reporoot'};
+	$rootdir = $cfgyaml->[0]{'reporoot'};
 	reporoot($rootdir);
 
 	# For each id:
 	#   - ensure repo subdirectory exists
 	#   - call relevant handler
 	#
-    if( ! ( @ids ) )  { @ids = keys %{ $yaml->[0] }; }      # if no ids provided use all from configuration
+    if( ! ( @ids ) )  { @ids = keys %{ $repoyaml->[0] }; }  # if no ids provided use all from configuration
 	for my $id ( @ids )  {
-	    my $type = $yaml->[0]{$id}{'type'};                 # for simplification of code
+	    my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
 
 	    if($type)  {                                        # sanity check: all repo handlers must have type defined
 	        my $repocreated = reporoot("$rootdir/$id");
 	        if(defined &{$type})  {                         # check if appropriate handler routine is defined
-	            $type->($id, $yaml->[0]{$id});
+	            $type->($id, $repoyaml->[0]{$id});
 	        } else  {
 	            error("Handler for type --> $type <-- does not exist. Skipping...");
 	        }
@@ -226,25 +238,30 @@ sub sync  {
 
 # command: test -- update pointers for test repository
 sub test  {
-    my $testcfgfile = $TESTCONFIG;
     my %oldrepo;
+    my @repoconfig;
     my @config;
     my @links;
     my $root;
 
-    if( ! -e $testcfgfile )  {
+    if( ! -e $TESTCONFIG )  {
         error( "'test' command but no test configuration available." );
         usage();
         croak "Quitting!";
     }
     info( "Updating test...\n" );
-    @config = readlines( $testcfgfile );
-    ( $root ) = grep { /^\s*rootdir:/x } @config;
-    ( $root ) = $root =~ /\s*rootdir:\s*(.*)/x;
+    @repoconfig = readlines( $TESTCONFIG );
+    @config     = readlines( $CONFIG );
+    ( $root ) = grep { /^\s*repodir:/x } @config;
+    if( ! $root )  {
+        error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
+        croak "Cannot continue, quitting.";
+    }
+    ( $root ) = $root =~ /\s*repodir:\s*(.*)/x;
     reporoot( "$root/$TESTDIR" );
     clean_symlinks( "$root/$TESTDIR" );
 
-    @links = sort { $b cmp $a } @config;
+    @links = sort { $b cmp $a } @repoconfig;
     foreach my $link ( @links )  {
         chomp $link;
         if( $link =~ /^\s*rootdir:/x )  { next; }           # skip rootdir config line
@@ -271,34 +288,38 @@ sub test  {
 # a requirement for production links is that the link is in the test config
 # (assumed meaning the link has been tested)
 sub prod  {
-    my $testcfgfile = $TESTCONFIG;
-    my $prodcfgfile = $PRODCONFIG;
-    my @prodconfig;
-    my @testconfig;
+    my @prodconfig;                                         # test repo config
+    my @testconfig;                                         # prod repo config
+    my @config;                                             # generic configuration
     my %oldrepo;
     my @links;
     my $root;
 
-    if( ! -e $testcfgfile )  {
+    if( ! -e $TESTCONFIG )  {
         error( "'prod' command but no test configuration available!" );
         error( "Maybe provide one as an argument?" );
         usage();
         croak "Quitting!";
     }
-    if( ! -e $prodcfgfile )  {
+    if( ! -e $PRODCONFIG )  {
         error( "'prod' command but no production configuration available!" );
         error( "Maybe provide one as an argument?" );
         usage();
         croak "Quitting!";
     }
     info( "Updating prod...\n" );
-    @prodconfig = readlines( $prodcfgfile );
-    ( $root ) = grep { /^\s*rootdir:/x } @prodconfig;
-    ( $root ) = $root =~ /\s*rootdir:\s*(.*)/x;
+    @prodconfig = readlines( $PRODCONFIG );
+    @testconfig = readlines( $TESTCONFIG );
+    @config     = readlines( $CONFIG );
+    ( $root ) = grep { /^\s*repodir:/x } @config;
+    ( $root ) = $root =~ /\s*repodir:\s*(.*)/x;
+    if( ! $root )  {
+        error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
+        croak "Cannot continue, quitting.";
+    }
     reporoot( "$root/$PRODDIR" );
     clean_symlinks( "$root/$PRODDIR" );
 
-    @testconfig = readlines( $testcfgfile );
 
     @links = sort { $b cmp $a } @prodconfig;
     foreach my $link ( @links )  {
@@ -311,7 +332,7 @@ sub prod  {
             if( ( ! grep { /$link/x } @testconfig) )  {
 #my $a = any { /$link/x } ("a", "b");
 #            if( none { /$link/x } @testconfig )  {
-                error( "$link is not allowed (not listed in test configuration: $testcfgfile)" );
+                error( "$link is not allowed (not listed in test configuration: $TESTCONFIG)" );
                 next;
             }
             if( $DEBUG )  {
