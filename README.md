@@ -56,8 +56,9 @@ according to the method beeing used. They are described below.
 
     - **reporoot** *This is the top level directory under which all the repositories are stored*
 
+
 Method expansion
-''''''''''''''''
+""""""""""""""""
 
 To expand the universe of methods for retrieving the sources, just add a subroutine to the script named exactly the same as the
 name of the type which will be used in the configuration ("repofile"). Nothing else has to be altered in the script for this
@@ -66,37 +67,47 @@ new method to be available! The routine will be called with two arguments:
 1. **id**: *the name of the repo and uniq identifier in the yaml file*
 #. *a hash with all options provided for this section, no filtering*
 
+
 Current methods supported
-'''''''''''''''''''''''''
+"""""""""""""""""""""""""
 
 - GIT
     - type: *git*
     - required arguments:
-        - **uri**
+
+      **uri**
 
 - YUM
     - type: *yum*
     - required arguments:
-        **repoid**
+      
+      **repoid**
+
     - optional arguments:
-        **repofile** (default: *repo.conf.d/yum.conf.d/yum.conf*)
+
+      **repofile** (default: *repo.conf.d/yum.conf.d/yum.conf*)
 
 - FILE
     - type: *file*
     - required arguments:
-        **uri**
+
+      **uri**
+
     - optional arguments:
-        **checksum**: *If not provided the file is ALLWAYS fetched, otherwise the checksum is first verified if file exists locally*
+
+      **checksum**: *If not provided the file is ALLWAYS fetched, otherwise the checksum is first verified if file exists locally*
 
 - RSYNC
     - type: *rsync*
     - required arguments:
-        **uri**
+
+      **uri**
 
 - COMMAND
     - type: *exec*
     - required arguments:
-        **exec**: *Command to be executed verbatim. It is assumed the script is never runned as a web service etc!*
+
+      **exec**: *Command to be executed verbatim. It is assumed the script is never runned as a web service etc!*
 
 
 test
