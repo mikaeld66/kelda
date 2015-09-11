@@ -2,7 +2,8 @@
 Kelda
 =====
 
-**Scripts to maintain a local copy of a set of external repositories, and then present a controlled test- and production-environment from timebased snapshots.**
+**Scripts to maintain a local copy of a set of external repositories, and then present
+a controlled test- and production-environment from timebased snapshots.**
 
 The main hierarchy is controlled by a simple yaml-file, one set of options for each
 external source. These sources might be of varying types, like YUM and GIT repositories,
@@ -36,25 +37,31 @@ sync
 
 test
   set up links in the test directory pointing to snapshots as configured 
-  (default in "*repofile.test*")
+  (defaulti: "*repofile.test*")
 
 prod
   set up links in the prod directory pointing to snapshots as configured
-  (default in "*repofile.prod*")
+  (default: "*repofile.prod*")
 
 
 sync
 ----
 
-Default configuration file: *repofile*
-
 This command syncronizes a set of local repos directly under the configured root directory from sources specified.
 The methods for retrieval of these sources are specified in the configuration, the arguments and/or options varies
 according to the method beeing used. They are described below.
 
+*Default configuration files*
+
+:Repository file:
+  repofile
+
+:Generic file:
+  config
+
 - required argument:
 
-    - **reporoot** *This is the top level directory under which all the repositories are stored*
+  **reporoot** *This is the top level directory under which all the repositories are stored*
 
 
 Method expansion
@@ -113,8 +120,12 @@ Current methods supported
 test
 ----
 
-*Default configruation files*
+This command set up the test area. A directory is created as specified (if not already existing) and symbolic links is put in place as specified in
+the configuration file. All links already in place are removed before the new ones are created! This way old links not listed in the configuration
+any more is unpresented from the consumer.
 
+
+*Default configuration files*
 
 :Repository file:
   repofile.test
@@ -122,12 +133,9 @@ test
 :Generic file:
   config
 
-This command set up the test area. A directory is created as specified (if not already existing) and symbolic links is put in place as specified in
-the configuration file. All links already in place are removed before the new ones are created! This way old links not listed in the configuration
-any more is unpresented from the consumer.
-
-- required arguments:
-    **rootdir**: This is the directory under which the "top level" directory is created. If no directory named 'test' exists here, it is created. Beneath this there will be a link for every line specified in the configuration file.
+Required arguments:
+  **rootdir**
+  This is the directory under which the "top level" directory is created. If no directory named 'test' exists here, it is created. Beneath this there will be a link for every line specified in the configuration file.
 
 - optional arguments:
     *For each repository which should be publized one line relative to the 'snapshot'-directory. That is; use the form "*<YYYY-MM-DD/[repo]>*".
@@ -135,6 +143,12 @@ any more is unpresented from the consumer.
 
 prod
 ----
+
+This command behaves like the test command, but creates a subdirectory under the specified "rootdir" named 'prod'. An additional requirement for publication
+of the production links, as opposed to the test procedure, is that every line in the configuration must also exist in the test configuration. The rationale
+beeing that any source presented to the production environment must have been through testing. Removal of a reference to the relevant snapshot of a repository from
+the test configuration will lead to the removal of any corresponding link in the production environment!
+
 
 *Default configruation files*
 
@@ -148,11 +162,6 @@ prod
 
 .. NOTE::
    Test configuration is required!
-
-This command behaves like the test command, but creates a subdirectory under the specified "rootdir" named 'prod'. An additional requirement for publication
-of the production links, as opposed to the test procedure, is that every line in the configuration must also exist in the test configuration. The rationale
-beeing that any source presented to the production environment must have been through testing. Removal of a reference to the relevant snapshot of a repository from
-the test configuration will lead to the removal of any corresponding link in the production environment!
 
 
 Perl modules

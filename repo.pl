@@ -4,13 +4,14 @@ use 5.010;                                      # to get 'given-when' functional
 use warnings;
 use Carp;
 use strict;
-no strict 'refs';
+no strict 'refs';                               # to make indirect references to subroutines
 
 use Readonly;                                   # for the "constants"
 use Test::YAML::Valid;
 use YAML::Tiny;
 use Getopt::Long::Descriptive;
 use File::Basename;
+use File::Temp qw(tempfile);
 use Digest::MD5 qw(md5_hex);
 
 Readonly my $FALSE => 0;
@@ -69,8 +70,13 @@ sub run_systemcmd  {
 # tests for an empty directory
 sub is_folder_empty {
     my $dirname = shift;
-    opendir(my $dh, $dirname) or croak "Not a directory";
-    return scalar( grep { $_ ne '.' && $_ ne '..' } readdir( $dh ) ) == 0;
+    if( $DEBUG )  {
+        info( "Would check $dirname for emptiness..." );
+    } else  {
+        opendir(my $dh, $dirname) or croak "Not a directory";
+        return scalar( grep { $_ ne '.' && $_ ne '..' } readdir( $dh ) ) == 0;
+    }
+    return 0;
 }
 
 
@@ -203,24 +209,24 @@ sub sync  {
     my $repoyaml;                                           # content of main repo configuration file ('repofile')
     my $cfgyaml;                                            # generic configuration
 
-	# read configuration ("profile")
-	if($DEBUG)  {
-	    yaml_file_ok("$REPOCONFIG", "$REPOCONFIG is a valid YAML file\n");
+    # read configuration ("profile")
+    if($DEBUG)  {
+        yaml_file_ok("$REPOCONFIG", "$REPOCONFIG is a valid YAML file\n");
 	}
 
-	$repoyaml = YAML::Tiny->read( "$REPOCONFIG" );
+    $repoyaml = YAML::Tiny->read( "$REPOCONFIG" );
     $cfgyaml = YAML::Tiny->read( "$CONFIG" );
 
-	# Ensure existence of root repositiory directory
-	$rootdir = $cfgyaml->[0]{'reporoot'};
-	reporoot($rootdir);
+    # Ensure existence of root repositiory directory
+    $rootdir = $cfgyaml->[0]{'repodir'};
+    reporoot($rootdir);
 
-	# For each id:
-	#   - ensure repo subdirectory exists
-	#   - call relevant handler
-	#
+    # For each id:
+    #   - ensure repo subdirectory exists
+    #   - call relevant handler
+    #
     if( ! ( @ids ) )  { @ids = keys %{ $repoyaml->[0] }; }  # if no ids provided use all from configuration
-	for my $id ( @ids )  {
+    for my $id ( @ids )  {
 	    my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
 
 	    if($type)  {                                        # sanity check: all repo handlers must have type defined
@@ -240,9 +246,9 @@ sub sync  {
 sub test  {
     my %oldrepo;
     my @repoconfig;
-    my @config;
+    my $cfgyaml;
     my @links;
-    my $root;
+    my $rootdir;
 
     if( ! -e $TESTCONFIG )  {
         error( "'test' command but no test configuration available." );
@@ -251,15 +257,16 @@ sub test  {
     }
     info( "Updating test...\n" );
     @repoconfig = readlines( $TESTCONFIG );
-    @config     = readlines( $CONFIG );
-    ( $root ) = grep { /^\s*repodir:/x } @config;
-    if( ! $root )  {
+    $cfgyaml = YAML::Tiny->read( "$CONFIG" );
+
+    # Ensure existence of root repositiory directory
+	$rootdir = $cfgyaml->[0]{'repodir'};
+    if( ! $rootdir )  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    ( $root ) = $root =~ /\s*repodir:\s*(.*)/x;
-    reporoot( "$root/$TESTDIR" );
-    clean_symlinks( "$root/$TESTDIR" );
+    reporoot( "$rootdir/$TESTDIR" );
+    clean_symlinks( "$rootdir/$TESTDIR" );
 
     @links = sort { $b cmp $a } @repoconfig;
     foreach my $link ( @links )  {
@@ -269,12 +276,12 @@ sub test  {
         chomp $repo if $repo;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEBUG)  {
-                info( "Linking $root/$TESTDIR/$repo from $root/$SNAPSHOTSDIR/$source/$repo" );
+                info( "Linking $rootdir/$TESTDIR/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
             } else  {
-                if( -d "$root/$SNAPSHOTSDIR/$source/$repo" )  {
-                    symlink "$root/$SNAPSHOTSDIR/$source/$repo", "$root/$TESTDIR/$repo" || error("Could not make link for repo $repo");
+                if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
+                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$TESTDIR/$repo" || error("Could not make link for repo $repo");
                 } else  {
-                    error(" Source directory for $repo does not exist ($root/$SNAPSHOTSDIR/$source/$repo) - skipping");
+                    error(" Source directory for $repo does not exist ($rootdir/$SNAPSHOTSDIR/$source/$repo) - skipping");
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -290,10 +297,10 @@ sub test  {
 sub prod  {
     my @prodconfig;                                         # test repo config
     my @testconfig;                                         # prod repo config
-    my @config;                                             # generic configuration
+    my $cfgyaml;                                             # generic configuration
     my %oldrepo;
     my @links;
-    my $root;
+    my $rootdir;
 
     if( ! -e $TESTCONFIG )  {
         error( "'prod' command but no test configuration available!" );
@@ -310,15 +317,16 @@ sub prod  {
     info( "Updating prod...\n" );
     @prodconfig = readlines( $PRODCONFIG );
     @testconfig = readlines( $TESTCONFIG );
-    @config     = readlines( $CONFIG );
-    ( $root ) = grep { /^\s*repodir:/x } @config;
-    ( $root ) = $root =~ /\s*repodir:\s*(.*)/x;
-    if( ! $root )  {
+    $cfgyaml    = YAML::Tiny->read( "$CONFIG" );
+
+    # Ensure existence of root repositiory directory
+	$rootdir = $cfgyaml->[0]{'repodir'};
+    if( ! $rootdir )  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    reporoot( "$root/$PRODDIR" );
-    clean_symlinks( "$root/$PRODDIR" );
+    reporoot( "$rootdir/$PRODDIR" );
+    clean_symlinks( "$rootdir/$PRODDIR" );
 
 
     @links = sort { $b cmp $a } @prodconfig;
@@ -336,12 +344,12 @@ sub prod  {
                 next;
             }
             if( $DEBUG )  {
-                info( "Linking $root/$PRODDIR/$repo from $root/$SNAPSHOTSDIR/$source/$repo" );
+                info( "Linking $rootdir/$PRODDIR/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
             } else  {
-                if( -d "$root/$SNAPSHOTSDIR/$source/$repo" )  {
-                    symlink "$root/$SNAPSHOTSDIR/$source/$repo", "$root/$PRODDIR/$repo" || error( "Could not make link for repo $repo" );
+                if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
+                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$PRODDIR/$repo" || error( "Could not make link for repo $repo" );
                 } else  {
-                    error( "Source directory for $repo does not exist ($root/$SNAPSHOTSDIR/$source/$repo) - skipping" );
+                    error( "Source directory for $repo does not exist ($rootdir/$SNAPSHOTSDIR/$source/$repo) - skipping" );
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -365,18 +373,40 @@ sub prod  {
 # can be assumed already exists.
 #
 
-
 # Mirroring YUM repositories
 sub yum {
     my ($id, $repoinfo) = @_;
-    my $repofile= $repoinfo->{'repofile'};
-    my $repoid  = $repoinfo->{'repoid'};
+    my $reposdir = $repoinfo->{'reposdir'};
+    my $repoid   = $repoinfo->{'repoid'};
+    my ( $fh, $yumtmp, @yumconf );
 
-    if( ! $repofile )  { $repofile = $YUMCONFIG; }
+    my $yumconftmpl = << 'TMPL_END';
+[main]
+cachedir=/var/cache/yum/$basearch/$releasever
+keepcache=0
+debuglevel=2
+logfile=/var/log/yum.log
+exactarch=1
+obsoletes=1
+gpgcheck=1
+plugins=1
+installonly_limit=3
+reposdir=[%REPOSDIR%]
+TMPL_END
+
+    if( ! $reposdir )  { $reposdir = "$CONFIGDIR/$id"; }
+
     if( $repoid )  {
-        info( "Syncing YUM repository using $repofile as repofile (id: $id)..." );
+        # generate yum configurstion
+        ($fh, $yumtmp) = tempfile( "yumXXXX", SUFFIX => '.conf', DIR => '/tmp' );
+        @yumconf = $yumconftmpl =~ s/\[%REPOSDIR%\]/$reposdir/r;
+        print( $fh @yumconf);
+        close $fh;
+
+        info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir/$id as repofiledirectory (id: $id)..." );
         chdir( "$rootdir/$id" );
-        run_systemcmd( 'reposync', "-qdc $repofile", '--delete', '--gpgcheck', '--norepopath', "-r $repoid", "-p $rootdir/$id" );
+        run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--gpgcheck', '--norepopath', "-r $repoid", "-p $rootdir/$id" );
+        unlink $yumtmp;
     } else  {
         error( "'repoid' must be specified! Skipping..." );
     }
