@@ -470,7 +470,7 @@ sub file {
     my $rootdir = $_[0];
     my $id      = $_[1];
     my $uri     = $_[2]->{'uri'};
-    my $chksum  = $_[3]->{'checksum'};
+    my $chksum  = $_[2]->{'checksum'};
     my $filename;
 
     if($uri)  {
@@ -494,8 +494,8 @@ sub file {
 # Rsync based copying
 sub rsync {
     my $rootdir = $_[0];
-    my $id      = $_[0];
-    my $uri     = $_[1]->{'uri'};
+    my $id      = $_[1];
+    my $uri     = $_[2]->{'uri'};
 
     if($uri)  {
         info("Syncronizing from $uri (id: $id)...");
