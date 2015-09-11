@@ -172,7 +172,6 @@ if($DEBUG)  {
     [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
-    [ 'yumconf|y=s',      "Yum configuration (external repositories)" ],
     [ 'help|h',           "Usage help" ],
 );
 
@@ -188,11 +187,9 @@ my $CONFIG       = "$CONFIGDIR/config";                     # generic configurat
 my $REPOCONFIG   = "$CONFIGDIR/repofile";                   # default main repo configuration file name
 my $TESTCONFIG   = "$CONFIGDIR/repofile.test";              # default test repo configuration
 my $PRODCONFIG   = "$CONFIGDIR/repofile.prod";              # default prod repo configuration
-my $YUMCONFIG    = "$CONFIGDIR/yum.conf.d/yum.conf";        # default yum configuration for external repositories
 
 if( $opt->testrepofile )  { $TESTCONFIG = $opt->testrepofile; }
 if( $opt->prodrepofile )  { $PRODCONFIG = $opt->prodrepofile; }
-if( $opt->yumconf      )  { $YUMCONFIG  = $opt->yumconf; }
 
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
