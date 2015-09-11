@@ -19,6 +19,7 @@ Readonly my $TRUE  => 1;
 
 my $DEBUG        = $TRUE;
 my $CONFIGDIR    = "/etc/kelda";                # default top level system-wide configuration directory
+my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
 my $TESTDIR      = "test";
 my $PRODDIR      = "prod";
@@ -219,7 +220,7 @@ sub sync  {
 
     # Ensure existence of root repositiory directory
     $rootdir = $cfgyaml->[0]{'repodir'};
-    reporoot($rootdir);
+    reporoot("$rootdir/$REPODIR");
 
     # For each id:
     #   - ensure repo subdirectory exists
@@ -230,9 +231,9 @@ sub sync  {
 	    my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
 
 	    if($type)  {                                        # sanity check: all repo handlers must have type defined
-	        my $repocreated = reporoot("$rootdir/$id");
+	        my $repocreated = reporoot( "$rootdir/$REPODIR/$id" );
 	        if(defined &{$type})  {                         # check if appropriate handler routine is defined
-	            $type->($id, $repoyaml->[0]{$id});
+	            $type->( "$rootdir/$REPODIR", $id, $repoyaml->[0]{$id} );
 	        } else  {
 	            error("Handler for type --> $type <-- does not exist. Skipping...");
 	        }
@@ -366,6 +367,8 @@ sub prod  {
 # The routines must have the exact same name as the 'type' set in this file.
 #
 # Arguments provided:
+# - the repo directory (where to the external sources should be retrieved)
+#   (this directory can be assumed exists)
 # - the 'id' (name of local repository as named in the repofile)
 # - a hash of all values provided in the file for the named repository
 #
@@ -375,7 +378,7 @@ sub prod  {
 
 # Mirroring YUM repositories
 sub yum {
-    my ($id, $repoinfo) = @_;
+    my ($rootdir, $id, $repoinfo) = @_;
     my $reposdir = $repoinfo->{'reposdir'};
     my $repoid   = $repoinfo->{'repoid'};
     my ( $fh, $yumtmp, @yumconf );
@@ -416,18 +419,18 @@ TMPL_END
 
 # Mirroring Git repositories
 sub git {
-    my $id  = $_[0];
-    my $uri = $_[1]->{'uri'};
-    my $dir = "$rootdir/$id";
-    my $new = is_folder_empty($dir);
+    my $rootdir = $_[0];
+    my $id      = $_[1];
+    my $uri     = $_[2]->{'uri'};
+    my $new     = is_folder_empty( "$rootdir/$id" );
     my $cmd;
 
     info("Getting GIT repository (id: $id) from $uri...");
     if($new)  {
         chdir("$rootdir");
-        run_systemcmd('git', "clone", "$uri", "$dir");
+        run_systemcmd('git', "clone", "$uri", "$rootdir");
     } else  {
-        chdir("$dir");
+        chdir("$rootdir/$id");
         run_systemcmd('git', 'pull');
     }
     return 0;
@@ -464,9 +467,10 @@ sub md5sum {
 }
 
 sub file {
-    my $id      = $_[0];
-    my $uri     = $_[1]->{'uri'};
-    my $chksum  = $_[1]->{'checksum'};
+    my $rootdir = $_[0];
+    my $id      = $_[1];
+    my $uri     = $_[2]->{'uri'};
+    my $chksum  = $_[3]->{'checksum'};
     my $filename;
 
     if($uri)  {
@@ -489,8 +493,9 @@ sub file {
 
 # Rsync based copying
 sub rsync {
-    my $id  = $_[0];
-    my $uri = $_[1]->{'uri'};
+    my $rootdir = $_[0];
+    my $id      = $_[0];
+    my $uri     = $_[1]->{'uri'};
 
     if($uri)  {
         info("Syncronizing from $uri (id: $id)...");
@@ -507,7 +512,7 @@ sub rsync {
 # For now we assume this script is only run manually and thus everything it is
 # tasked to do the "user" is also permitted to do him/herself
 sub execute {
-    my ($id, $cmd) = @_;
+    my ($rootdir, $id, $cmd) = @_;
     $cmd = $cmd->{'exec'};
 
     if( $cmd )  {
