@@ -7,6 +7,7 @@ use strict;
 no strict 'refs';                               # to make indirect references to subroutines
 
 use Readonly;                                   # for the "constants"
+use Cwd 'abs_path';
 use Test::YAML::Valid;
 use YAML::Tiny;
 use Getopt::Long::Descriptive;
@@ -52,7 +53,7 @@ sub error  {
 # executes commands on the system proper
 sub run_systemcmd  {
     my (@cmd) = @_;
-    my $ret;
+    my $ret   = 0;
     my $cmdstring;
 
     # build command
@@ -60,7 +61,8 @@ sub run_systemcmd  {
         $cmdstring .= "$_ ";
     }
     if($DEBUG)  {
-        $ret = print "system($cmdstring)\n";
+        print "CWD: " . getcwd() . "\n";
+        print "system($cmdstring)\n";
     } else  {
         $ret = system($cmdstring);
     }
@@ -69,15 +71,20 @@ sub run_systemcmd  {
 
 
 # tests for an empty directory
+#
+# Returns no of file entries excluding '.' and '..'.
+# Returns -1 if not a directory
 sub is_folder_empty {
     my $dirname = shift;
+    my $dh;
     if( $DEBUG )  {
-        info( "Would check $dirname for emptiness..." );
-    } else  {
-        opendir(my $dh, $dirname) or croak "Not a directory";
+        info( "Will check $dirname for emptiness..." );
+    }
+    if( opendir($dh, $dirname) )  {
         return scalar( grep { $_ ne '.' && $_ ne '..' } readdir( $dh ) ) == 0;
     }
-    return 0;
+    info( "$dirname: Not a directory" ) if( $DEBUG );
+    return -1;
 }
 
 
@@ -135,7 +142,8 @@ sub reporoot  {
     my $created = $FALSE;
 
     if( ! -d $root )  {
-        if( ! run_systemcmd( "mkdir $root" ) )  {           # not using Perl 'mkdir' since it can not create '-p' style and also fails if dir already exists
+#        if( ! run_systemcmd( "mkdir -p $root" ) )  {        # not using Perl 'mkdir' since it can not create '-p' style and also fails if dir already exists
+        if( run_systemcmd( "mkdir -p $root" ) )  {          # not using Perl 'mkdir' since it can not create '-p' style and also fails if dir already exists
             croak "Can not create top level directory '$root', aborting\n";
         }
         $created = $TRUE;
@@ -210,13 +218,13 @@ sub sync  {
     # read configuration ("profile")
     if($DEBUG)  {
         yaml_file_ok("$REPOCONFIG", "$REPOCONFIG is a valid YAML file\n");
-	}
+    }
 
     $repoyaml = YAML::Tiny->read( "$REPOCONFIG" );
     $cfgyaml = YAML::Tiny->read( "$CONFIG" );
 
     # Ensure existence of root repositiory directory
-    $rootdir = $cfgyaml->[0]{'repodir'};
+    $rootdir = abs_path( $cfgyaml->[0]{'repodir'} );
     reporoot("$rootdir/$REPODIR");
 
     # For each id:
@@ -225,17 +233,17 @@ sub sync  {
     #
     if( ! ( @ids ) )  { @ids = keys %{ $repoyaml->[0] }; }  # if no ids provided use all from configuration
     for my $id ( @ids )  {
-	    my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
+        my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
 
-	    if($type)  {                                        # sanity check: all repo handlers must have type defined
-	        my $repocreated = reporoot( "$rootdir/$REPODIR/$id" );
-	        if(defined &{$type})  {                         # check if appropriate handler routine is defined
-	            $type->( "$rootdir/$REPODIR", $id, $repoyaml->[0]{$id} );
-	        } else  {
-	            error("Handler for type --> $type <-- does not exist. Skipping...");
-	        }
-	    }
-	}
+        if($type)  {                                        # sanity check: all repo handlers must have type defined
+            my $repocreated = reporoot( "$rootdir/$REPODIR/$id" );
+            if(defined &{$type})  {                         # check if appropriate handler routine is defined
+                $type->( "$rootdir/$REPODIR", $id, $repoyaml->[0]{$id} );
+            } else  {
+                error("Handler for type --> $type <-- does not exist. Skipping...");
+            }
+        }
+    }
     return 0;
 }
 
@@ -365,7 +373,7 @@ sub prod  {
 #
 # Arguments provided:
 # - the repo directory (where to the external sources should be retrieved)
-#   (this directory can be assumed exists)
+#   (this directory can be assumed exists and be in absolute form)
 # - the 'id' (name of local repository as named in the repofile)
 # - a hash of all values provided in the file for the named repository
 #
@@ -425,7 +433,7 @@ sub git {
     info("Getting GIT repository (id: $id) from $uri...");
     if($new)  {
         chdir("$rootdir");
-        run_systemcmd('git', "clone", "$uri", "$rootdir");
+        run_systemcmd('git', "clone", "$uri", "$id");
     } else  {
         chdir("$rootdir/$id");
         run_systemcmd('git', 'pull');
@@ -521,3 +529,4 @@ sub execute {
     }
     return 0;
 }
+

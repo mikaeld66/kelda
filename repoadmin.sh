@@ -118,7 +118,8 @@ initrepo()
 #  rsync'ed clone will create a new file -> hard linked snapshot does not change (link is broken instead)
 clone()
 {
-    rsync -Ha --links --backup --backup-dir=$CLONEDIR/revisions $REPODIR/ $CLONEDIR
+#    rsync -Ha --links --backup --backup-dir=$CLONEDIR/revisions $REPODIR/ $CLONEDIR
+    rsync -Ha --links $REPODIR/ $CLONEDIR
 }
 
 # Create the initial backup which the other snapshots are linked to
