@@ -18,7 +18,7 @@ use Digest::MD5 qw(md5_hex);
 Readonly my $FALSE => 0;
 Readonly my $TRUE  => 1;
 
-my $DEBUG        = $TRUE;
+my $DEBUG        = $FALSE;
 my $CONFIGDIR    = "/etc/kelda";                # default top level system-wide configuration directory
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
@@ -61,7 +61,6 @@ sub run_systemcmd  {
         $cmdstring .= "$_ ";
     }
     if($DEBUG)  {
-        print "CWD: " . getcwd() . "\n";
         print "system($cmdstring)\n";
     } else  {
         $ret = system($cmdstring);
