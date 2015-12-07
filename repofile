@@ -4,19 +4,37 @@
     type: git
     uri: https://github.com/norcams/himlar
 
-  rhos-kanal-xyz:
-    type: rsync
-    uri: /etc/yum.repos.d/
+  centos7:
+    type: yum
+#    reposdir: centos
+    repoid: CentOS-Base
 
-#  rhel7.iso:
-#    type: file
-#    uri: http://pxe.uio.no/iso/rhel-workstation-7.1-x86_64-dvd.iso
-#    checksum: 0f48ed77b53e135a5c3a374c6893b938
+  centos7-updates:
+    type: yum
+#    reposdir: centos
+    repoid: CentOS-Updates
+
+  calico:
+    type: git
+    uri: https://github.com/projectcalico/calico.git
+
+  theforeman:
+    type: git
+    uri: https://github.com/theforeman/foreman.git
 
   uio-free:
     type: yum
     repoid: uio-free
 
+#  rhos-kanal-xyz:
+#    type: rsync
+#    uri: /etc/yum.repos.d/
+#
+#  rhel7.iso:
+#    type: file
+#    uri: http://pxe.uio.no/iso/rhel-workstation-7.1-x86_64-dvd.iso
+#    checksum: 0f48ed77b53e135a5c3a374c6893b938
+#
 #  norcams:
 #    type: execute
 #    exec: scp hjem:/etc/printcap .

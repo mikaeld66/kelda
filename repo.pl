@@ -391,11 +391,11 @@ sub yum {
 [main]
 cachedir=/var/cache/yum/$basearch/$releasever
 keepcache=0
-debuglevel=2
+debuglevel=0
 logfile=/var/log/yum.log
 exactarch=1
 obsoletes=1
-gpgcheck=1
+gpgcheck=0
 plugins=1
 installonly_limit=3
 reposdir=[%REPOSDIR%]
@@ -410,9 +410,10 @@ TMPL_END
         print( $fh @yumconf);
         close $fh;
 
-        info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir/$id as repofiledirectory (id: $id)..." );
+        info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
         chdir( "$rootdir/$id" );
-        run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--gpgcheck', '--norepopath', "-r $repoid", "-p $rootdir/$id" );
+#        run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--gpgcheck', '--norepopath', "-r $repoid", "-p $rootdir/$id" );
+        run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', "-r $repoid", "-p $rootdir/$id" );
         unlink $yumtmp;
     } else  {
         error( "'repoid' must be specified! Skipping..." );

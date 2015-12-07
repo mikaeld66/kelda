@@ -38,6 +38,7 @@ Usage:
   Commands:
 
     init        : initialize directory structure and initial retrieval of source
+    sync        : update/freshen repositories from the external sources
     clone       : clone main repo, keep backup of altered files
     snapshot    : create time stamped backups (hardlinked) of clone
     setup_test  : manipulate directory links in test repository
@@ -52,9 +53,6 @@ EOF
 
 
 
-#
-# Main part
-#
 # default location for configuration if no environment provided
 environment=$PWD
 
