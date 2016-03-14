@@ -111,7 +111,7 @@ sub readlines  {
 
 
 # clean repository by removing all symbolic links
-# Non symlinks are preserved, this way exceptionally data might be publized
+# Non symlinks are preserved, this way exceptional (non-repo) data might be publicized
 sub clean_symlinks  {
     my ($dir) = @_;
     my @files;
@@ -220,7 +220,7 @@ sub sync  {
     }
 
     $repoyaml = YAML::Tiny->read( "$REPOCONFIG" );
-    $cfgyaml = YAML::Tiny->read( "$CONFIG" );
+    $cfgyaml  = YAML::Tiny->read( "$CONFIG" );
 
     # Ensure existence of root repositiory directory
     $rootdir = abs_path( $cfgyaml->[0]{'repodir'} );
@@ -456,7 +456,7 @@ sub md5sum {
     my $realchksum;
 
     if( ! -e $filename ) { return 1; }                      # file does not exist, skip
-    if( $chksum )  { return 1; }                            # no checksum provided, skip
+    if( ! $chksum )      { return 1; }                      # no checksum provided, skip
     if(! open( $FILE, '<', $filename ) )  {
         info( "Checksum provided and file exists, but can not open file. Skipping..." );
         return 1;
