@@ -11,6 +11,9 @@
 
 shopt -s extglob
 
+# get location of script
+BASEDIR=$(dirname $0)
+
 # default system wide configuration lays beneath this
 CONFDIR=/etc/kelda
 
@@ -84,7 +87,7 @@ sync()
 {
     configdir=$1
 
-    ./repo.pl -c $configdir sync
+    $BASEDIR/repo.pl -c $configdir sync
 }
 
 # create directory structures if missing
@@ -138,7 +141,7 @@ set -x
 setup_test()
 {
     configdir=$1
-    ./repo.pl -c $configdir test
+    $BASEDIR/repo.pl -c $configdir test
 }
 
 # Set up prod repository according to configuration ('repofile.prod)
@@ -146,7 +149,7 @@ setup_test()
 setup_prod()
 {
     configdir=$1
-    ./repo.pl -c $configdir prod
+    $BASEDIR/repo.pl -c $configdir prod
 }
 
 
