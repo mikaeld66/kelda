@@ -129,7 +129,6 @@ snapshot_init()
 # The snapshot is stamped by naming the directory using the current time
 snapshot()
 {
-set -x
     datedir=`date +%Y-%m-%d-%H%M`
     rsync -a --link-dest=$SNAPSHOTSDIR/current/ $REPODIR/ $SNAPSHOTSDIR/$datedir
     rm $SNAPSHOTSDIR/current
