@@ -1,4 +1,10 @@
 #!/usr/bin/perl
+#
+# Required packages for RedHat/Centos in additon to standard Perl setup :
+#
+# perl-Test-YAML-Valid (perl-YAML and perl-Yaml-Syck)
+# perl-YAML-Tiny
+# perl-Getopt-Long-Descriptive (bunch of dependencies)
 
 use 5.010;                                      # to get 'given-when' functionality
 use warnings;
@@ -302,7 +308,7 @@ sub test  {
 sub prod  {
     my @prodconfig;                                         # test repo config
     my @testconfig;                                         # prod repo config
-    my $cfgyaml;                                             # generic configuration
+    my $cfgyaml;                                            # generic configuration
     my %oldrepo;
     my @links;
     my $rootdir;
