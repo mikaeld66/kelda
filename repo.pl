@@ -197,9 +197,9 @@ if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir; }
 
 # we set these here in case the caller provided an alternative location
 my $CONFIG       = "$CONFIGDIR/config";                     # generic configuration
-my $REPOCONFIG   = "$CONFIGDIR/repofile";                   # default main repo configuration file name
-my $TESTCONFIG   = "$CONFIGDIR/repofile.test";              # default test repo configuration
-my $PRODCONFIG   = "$CONFIGDIR/repofile.prod";              # default prod repo configuration
+my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo configuration file name
+my $TESTCONFIG   = "$CONFIGDIR/test.config";                # default test repo configuration
+my $PRODCONFIG   = "$CONFIGDIR/prod.config";                # default prod repo configuration
 
 if( $opt->testrepofile )  { $TESTCONFIG = $opt->testrepofile; }
 if( $opt->prodrepofile )  { $PRODCONFIG = $opt->prodrepofile; }

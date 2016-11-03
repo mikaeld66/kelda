@@ -82,7 +82,7 @@ shift $((OPTIND-1))
 command=$1;
 
 
-# Fill repositories according to configuration ('repofile')
+# Fill repositories according to configuration ('repoconfig')
 sync()
 {
     configdir=$1
@@ -135,7 +135,7 @@ snapshot()
     ln -s $SNAPSHOTSDIR/$datedir $SNAPSHOTSDIR/current
 }
 
-# Set up test repository according to configuration ('repofile.test)
+# Set up test repository according to configuration (test.config)
 # Delegate to external repo script')
 setup_test()
 {
@@ -143,7 +143,7 @@ setup_test()
     $BASEDIR/repo.pl -c $configdir test
 }
 
-# Set up prod repository according to configuration ('repofile.prod)
+# Set up prod repository according to configuration (prod.config)
 # Delegate to external repo script')
 setup_prod()
 {
