@@ -407,7 +407,7 @@ installonly_limit=3
 reposdir=[%REPOSDIR%]
 TMPL_END
 
-    if( ! $reposdir )  { $reposdir = "$CONFIGDIR/$id"; }
+    if( ! $reposdir )  { $reposdir = "$CONFIGDIR/yum.repos.d"; }
 
     if( $repoid )  {
         # generate yum configurstion
