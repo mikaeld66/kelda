@@ -25,6 +25,7 @@ Readonly my $FALSE => 0;
 Readonly my $TRUE  => 1;
 
 my $DEBUG        = $FALSE;
+my $DEVDEBUG     = $FALSE;                      # development debug: set this to $TRUE to just write what should otherwise be done
 my $CONFIGDIR    = "/etc/kelda";                # default top level system-wide configuration directory
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
@@ -66,7 +67,7 @@ sub run_systemcmd  {
     foreach ( @cmd )  {
         $cmdstring .= "$_ ";
     }
-    if($DEBUG)  {
+    if($DEVDEBUG)  {
         print "system($cmdstring)\n";
     } else  {
         $ret = system($cmdstring);
@@ -130,7 +131,7 @@ sub clean_symlinks  {
     @files = glob "$dir/*";
     foreach my $file ( @files )  {
         if ( -l "$file" ) {
-            if( $DEBUG )  {
+            if( $DEVDEBUG )  {
                 info( "Would unlink $file" );
             } else  {
                 unlink "$file" or info( "Failed to remove the symbolic link $file" );
@@ -226,7 +227,7 @@ sub sync  {
     my $cfgyaml;                                            # generic configuration
 
     # read configuration ("profile")
-    if($DEBUG)  {
+    if($DEVDEBUG)  {
         yaml_file_ok("$REPOCONFIG", "$REPOCONFIG is a valid YAML file\n");
     }
 
@@ -291,7 +292,7 @@ sub test  {
         my ( $source, $repo ) = split( /\//x, $link );
         chomp $repo if $repo;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
-            if($DEBUG)  {
+            if($DEVDEBUG)  {
                 info( "Linking $rootdir/$TESTDIR/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
             } else  {
                 if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
@@ -359,7 +360,7 @@ sub prod  {
                 error( "$link is not allowed (not listed in test configuration: $TESTCONFIG)" );
                 next;
             }
-            if( $DEBUG )  {
+            if( $DEVDEBUG )  {
                 info( "Linking $rootdir/$PRODDIR/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
             } else  {
                 if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
