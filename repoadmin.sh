@@ -25,6 +25,9 @@ EINVALCMD=2
 ENOCONFIG=3
 EUNKNOWN=6
 
+debug=""            # default no debug output
+
+
 usage()
 {
     cat << EOF
@@ -33,9 +36,10 @@ $0 - Administrating Norcams Openstack local repository
 
 Usage:
 
-  $0 -h|[-e <environment>] <command> [...]
+  $0 -h|[-e <environment>][-d] <command> [...]
 
     -e : environment under $CONFDIR to use if no local configuration
+    -d : debug output
 
   Commands:
 
@@ -57,12 +61,15 @@ EOF
 # default location for configuration if no environment provided
 environment=$PWD
 
-while getopts ":he" opt; do
+while getopts ":hed" opt; do
     case $opt in
 
         e)
             shift
             environment=$CONFDIR/$1
+            ;;
+        d)
+            debug="-d"
             ;;
         h)
             usage
@@ -87,7 +94,7 @@ sync()
 {
     configdir=$1
 
-    $BASEDIR/repo.pl -c $configdir sync
+    $BASEDIR/repo.pl $debug -c $configdir sync
 }
 
 # create directory structures if missing
@@ -140,7 +147,7 @@ snapshot()
 setup_test()
 {
     configdir=$1
-    $BASEDIR/repo.pl -c $configdir test
+    $BASEDIR/repo.pl $debug -c $configdir test
 }
 
 # Set up prod repository according to configuration (prod.config)
@@ -148,7 +155,7 @@ setup_test()
 setup_prod()
 {
     configdir=$1
-    $BASEDIR/repo.pl -c $configdir prod
+    $BASEDIR/repo.pl $debug -c $configdir prod
 }
 
 
