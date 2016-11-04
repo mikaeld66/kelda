@@ -398,6 +398,7 @@ sub yum {
     my $reposdir = $repoinfo->{'reposdir'};
     my $repoid   = $repoinfo->{'repoid'};
     my ( $fh, $yumtmp, @yumconf );
+    my $ret;
 
     my $yumconftmpl = << 'TMPL_END';
 [main]
@@ -425,9 +426,9 @@ TMPL_END
         info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." ) if( $DEBUG );
         chdir( "$rootdir/$id" );
         if($DEBUG)  {
-            my $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+            $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         } else  {
-            my $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+            $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         }
         if( $ret == 0 )  {
             if($DEBUG)  {
