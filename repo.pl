@@ -186,11 +186,16 @@ if($DEBUG)  {
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
     [ 'help|h',           "Usage help" ],
+    [ 'debug|d',          "Debug mode (print more information)" ],
 );
 
 if($opt->help)  {
     usage();
     exit 0;
+}
+
+if($opt->debug)  {
+    $DEBUG = $TRUE;
 }
 
 if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir; }
@@ -416,7 +421,7 @@ TMPL_END
         print( $fh @yumconf);
         close $fh;
 
-        info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
+        info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." ) if( $DEBUG );
         chdir( "$rootdir/$id" );
         my $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         if( $ret == 0 )  {
@@ -440,7 +445,7 @@ sub git {
     my $new     = is_folder_empty( "$rootdir/$id" );
     my $cmd;
 
-    info("Getting GIT repository (id: $id) from $uri...");
+    info("Getting GIT repository (id: $id) from $uri...") if( $DEBUG );
     if($new)  {
         chdir("$rootdir");
         run_systemcmd('git', "clone", "$uri", "$id");
@@ -491,9 +496,9 @@ sub file {
     if($uri)  {
         ($filename) = fileparse($uri);
         chdir("$rootdir/$id");
-        info("Getting file $uri (id: $id)...");
+        info("Getting file $uri (id: $id)...") if($DEBUG);
         if( md5sum( $filename, $chksum ) )  {                   # checksum provided -> verify if file already in place
-            info("No file with provided name and checksum exists, or no checksum provided -> fetching file...");
+            info("No file with provided name and checksum exists, or no checksum provided -> fetching file...") if( $DEBUG );
             run_systemcmd('wget', "-q", "-O $rootdir/$id/$filename", "$uri");
             if( ! md5sum($filename, $chksum ) )  {
                 info("Retrieved file did not match provided checksum!");
@@ -513,7 +518,7 @@ sub rsync {
     my $uri     = $_[2]->{'uri'};
 
     if($uri)  {
-        info("Syncronizing from $uri (id: $id)...");
+        info("Syncronizing from $uri (id: $id)...") if( $DEBUG );
         chdir( "$rootdir/$id" );
         run_systemcmd('rsync', '-aq', "$uri", "$rootdir/$id");
     } else  {
@@ -531,7 +536,7 @@ sub execute {
     $cmd = $cmd->{'exec'};
 
     if( $cmd )  {
-        info("Executing command $cmd (id: $id)...");
+        info("Executing command $cmd (id: $id)...") if( $DEBUG );
         chdir( "$rootdir/$id" );
         run_systemcmd( "$cmd");
     } else  {
