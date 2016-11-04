@@ -420,7 +420,7 @@ TMPL_END
         chdir( "$rootdir/$id" );
         my $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         if( $ret == 0 )  {
-            run_systemcmd( 'createrepo', "-v $rootdir/$id/" );
+            run_systemcmd( 'createrepo', '-v', '--deltas', '--update', " $rootdir/$id/" );
         } else  {
             error( "Something happened during reposync, error#: $ret" );
         }
