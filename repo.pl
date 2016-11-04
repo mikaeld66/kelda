@@ -424,9 +424,17 @@ TMPL_END
 
         info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." ) if( $DEBUG );
         chdir( "$rootdir/$id" );
-        my $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+        if($DEBUG)  {
+            my $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+        } else  {
+            my $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+        }
         if( $ret == 0 )  {
-            run_systemcmd( 'createrepo', '-v', '--deltas', '--update', " $rootdir/$id/" );
+            if($DEBUG)  {
+                run_systemcmd( 'createrepo', '-v', '--deltas', '--update', " $rootdir/$id/" );
+            } else  {
+                run_systemcmd( 'createrepo', '--deltas', '--update', " $rootdir/$id/" );
+            }
         } else  {
             error( "Something happened during reposync, error#: $ret" );
         }
