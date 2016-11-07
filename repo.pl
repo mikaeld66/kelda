@@ -397,6 +397,7 @@ sub yum {
     my ($rootdir, $id, $repoinfo) = @_;
     my $reposdir = $repoinfo->{'reposdir'};
     my $repoid   = $repoinfo->{'repoid'};
+    my $gpgkey   = $repoinfo->{'gpgkey'};
     my ( $fh, $yumtmp, @yumconf );
     my $ret;
 
@@ -435,6 +436,10 @@ TMPL_END
                 run_systemcmd( 'createrepo', '-v', '--deltas', '--update', " $rootdir/$id/" );
             } else  {
                 run_systemcmd( 'createrepo', '--deltas', '--update', " $rootdir/$id/" );
+            }
+            if( $ret == 0 and $gpgkey )  {
+                info ("Retrieving gpg key from $gpgkey using curl") if ( $DEBUG );
+                run_systemcmd('curl', "$gpgkey", "-o $rootdir/$id/");
             }
         } else  {
             error( "Something happened during reposync, error#: $ret" );
