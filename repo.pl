@@ -439,7 +439,7 @@ TMPL_END
             }
             if( $ret == 0 and $gpgkey )  {
                 info ("Retrieving gpg key from $gpgkey using curl") if ( $DEBUG );
-                run_systemcmd('curl', "$gpgkey", "-o $rootdir/$id/");
+                run_systemcmd('curl', "$gpgkey", "-o $rootdir/$id/$gpgkey");
             }
         } else  {
             error( "Something happened during reposync, error#: $ret" );
