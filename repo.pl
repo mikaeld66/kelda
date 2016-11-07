@@ -13,6 +13,7 @@ use strict;
 no strict 'refs';                               # to make indirect references to subroutines
 
 use Readonly;                                   # for the "constants"
+use Cwd;
 use Cwd 'abs_path';
 use Test::YAML::Valid;
 use YAML::Tiny;
@@ -435,11 +436,18 @@ TMPL_END
             if($DEBUG)  {
                 run_systemcmd( 'createrepo', '-v', '--deltas', '--update', " $rootdir/$id/" );
             } else  {
-                run_systemcmd( 'createrepo', '--deltas', '--update', " $rootdir/$id/" );
+                run_systemcmd( 'createrepo', '-q', '--deltas', '--update', " $rootdir/$id/" );
             }
             if( $ret == 0 and $gpgkey )  {
+                my $cwd = cwd();
+                chdir("$rootdir/$id");
                 info ("Retrieving gpg key from $gpgkey using curl") if ( $DEBUG );
-                run_systemcmd('curl', "$gpgkey", "-o $rootdir/$id/$gpgkey");
+                if( $DEBUG )  {
+                        run_systemcmd('curl', "$gpgkey", "-vO");
+                } else  {
+                        run_systemcmd('curl', "$gpgkey", "-sO");
+                }
+                chdir($cwd);
             }
         } else  {
             error( "Something happened during reposync, error#: $ret" );
