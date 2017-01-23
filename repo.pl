@@ -447,6 +447,8 @@ TMPL_END
                 } else  {
                         run_systemcmd('curl', "$gpgkey", "-sO");
                 }
+                info ("Importing gpg key $gpgkey using 'rpm --import'") if ( $DEBUG );
+                run_systemcmd('rpm', '--import', "$gpgkey");
                 chdir($cwd);
             }
         } else  {
