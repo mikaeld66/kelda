@@ -399,6 +399,7 @@ sub yum {
     my $reposdir = $repoinfo->{'reposdir'};
     my $repoid   = $repoinfo->{'repoid'};
     my $gpgkey   = $repoinfo->{'gpgkey'};
+    my $groupcmd = '';
     my ( $fh, $yumtmp, @yumconf );
     my $ret;
 
@@ -425,24 +426,27 @@ TMPL_END
         print( $fh @yumconf);
         close $fh;
 
-        info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." ) if( $DEBUG );
         chdir( "$rootdir/$id" );
         if($DEBUG)  {
+            info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
             $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         } else  {
             $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         }
         if( $ret == 0 )  {
+            # test if any group definition file is present
+            $groupcmd = "-g $rootdir/$id/comps.xml" if -e "$rootdir/$id/comps.xml";
             if($DEBUG)  {
-                run_systemcmd( 'createrepo', '-v', '--deltas', '--update', " $rootdir/$id/" );
+                info("Running createrepo -v(q) --deltas --update $groupcmd $rootdir/$id/" );
+                run_systemcmd( 'createrepo', '-v', '--deltas', '--update', $groupcmd, " $rootdir/$id/" );
             } else  {
-                run_systemcmd( 'createrepo', '-q', '--deltas', '--update', " $rootdir/$id/" );
+                run_systemcmd( 'createrepo', '-q', '--deltas', '--update', $groupcmd, " $rootdir/$id/" );
             }
             if( $ret == 0 and $gpgkey )  {
                 my $cwd = cwd();
                 chdir("$rootdir/$id");
-                info ("Retrieving gpg key from $gpgkey using curl") if ( $DEBUG );
                 if( $DEBUG )  {
+                        info("Retrieving gpg key from $gpgkey using curl");
                         run_systemcmd('curl', "$gpgkey", "-vO");
                 } else  {
                         run_systemcmd('curl', "$gpgkey", "-sO");
