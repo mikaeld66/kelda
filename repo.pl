@@ -437,10 +437,10 @@ TMPL_END
             # test if any group definition file is present
             $groupcmd = "-g $rootdir/$id/comps.xml" if -e "$rootdir/$id/comps.xml";
             if($DEBUG)  {
-                info("Running createrepo -v(q) --deltas --update $groupcmd $rootdir/$id/" );
-                run_systemcmd( 'createrepo', '-v', '--deltas', '--update', $groupcmd, " $rootdir/$id/" );
+                info("Running createrepo_c -v(q) --deltas --update $groupcmd $rootdir/$id/" );
+                run_systemcmd( 'createrepo_c', '-v', '--deltas', '--update', $groupcmd, " $rootdir/$id/" );
             } else  {
-                run_systemcmd( 'createrepo', '-q', '--deltas', '--update', $groupcmd, " $rootdir/$id/" );
+                run_systemcmd( 'createrepo_c', '-q', '--deltas', '--update', $groupcmd, " $rootdir/$id/" );
             }
             if( $ret == 0 and $gpgkey )  {
                 my $cwd = cwd();
@@ -458,7 +458,7 @@ TMPL_END
         } else  {
             error( "Something happened during reposync, error#: $ret" );
         }
-        unlink $yumtmp;
+        unlink $yumtmp if ( ! $DEBUG );
     } else  {
         error( "'repoid' must be specified! Skipping..." );
     }
