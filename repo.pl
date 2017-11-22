@@ -429,9 +429,9 @@ TMPL_END
         chdir( "$rootdir/$id" );
         if($DEBUG)  {
             info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
-            $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+            $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         } else  {
-            $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--delete', '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+            $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
         }
         if( $ret == 0 )  {
             # test if any group definition file is present
