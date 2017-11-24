@@ -487,7 +487,7 @@ sub git {
 
 
 # File retrieval (with optional checksum'ing)
-# Supports HTTP, HTTPS and FTP
+# Supports anonymous FTP
 
 # Helper routine for checksum'ing
 sub md5sum {
@@ -528,7 +528,8 @@ sub file {
         info("Getting file $uri (id: $id)...") if($DEBUG);
         if( md5sum( $filename, $chksum ) )  {                   # checksum provided -> verify if file already in place
             info("No file with provided name and checksum exists, or no checksum provided -> fetching file...") if( $DEBUG );
-            run_systemcmd('wget', "-q", "-O $rootdir/$id/$filename", "$uri");
+#            run_systemcmd('wget', "-q", "-O $rootdir/$id/$filename", "$uri");
+            run_systemcmd('/usr/bin/ncftpget', '-TVR', "$uri");
             if( ! md5sum($filename, $chksum ) )  {
                 info("Retrieved file did not match provided checksum!");
             }
