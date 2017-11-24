@@ -177,11 +177,6 @@ sub usage  {
 #
 # Main section starts here
 #
-if($DEBUG)  {
-    print "repo.pl invoked like this:\n";
-    print "$0 @ARGV\n";
-}
-
 ( $opt, $usage ) = describe_options(
     'repo %o [command]',
     [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
@@ -191,13 +186,18 @@ if($DEBUG)  {
     [ 'debug|d',          "Debug mode (print more information)" ],
 );
 
+if($opt->debug)  {
+    $DEBUG = $TRUE;
+}
+
+if($DEBUG)  {
+    print "repo.pl invoked like this:\n";
+    print "$0 @ARGV\n";
+}
+
 if($opt->help)  {
     usage();
     exit 0;
-}
-
-if($opt->debug)  {
-    $DEBUG = $TRUE;
 }
 
 if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir; }
