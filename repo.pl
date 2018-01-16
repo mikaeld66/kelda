@@ -529,7 +529,7 @@ sub file {
         if( md5sum( $filename, $chksum ) )  {                   # checksum provided -> verify if file already in place
             info("No file with provided name and checksum exists, or no checksum provided -> fetching file...") if( $DEBUG );
 #            run_systemcmd('wget', "-q", "-O $rootdir/$id/$filename", "$uri");
-            run_systemcmd('/usr/bin/ncftpget', '-TVR', "$uri");
+            run_systemcmd('/usr/bin/ncftpget', '-TVR', "$uri", ">/dev/null", "2>&1");
             if( ! md5sum($filename, $chksum ) )  {
                 info("Retrieved file did not match provided checksum!");
             }
