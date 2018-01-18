@@ -437,10 +437,10 @@ TMPL_END
             # test if any group definition file is present
             $groupcmd = "-g $rootdir/$id/comps.xml" if -e "$rootdir/$id/comps.xml";
             if($DEBUG)  {
-                info("Running createrepo_c -v(q) --update $groupcmd $rootdir/$id/" );
-                run_systemcmd( 'createrepo_c', '-v', '--update', $groupcmd, " $rootdir/$id/" );
+                info("Running createrepo_c -v(q) $groupcmd $rootdir/$id/" );
+                run_systemcmd( 'createrepo_c', '-v', $groupcmd, " $rootdir/$id/" );
             } else  {
-                run_systemcmd( 'createrepo_c', '-q', '--update', $groupcmd, " $rootdir/$id/" );
+                run_systemcmd( 'createrepo_c', '-q', $groupcmd, " $rootdir/$id/" );
             }
             if( $ret == 0 and $gpgkey )  {
                 my $cwd = cwd();
