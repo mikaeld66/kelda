@@ -550,7 +550,7 @@ sub rsync {
     if($uri)  {
         info("Syncronizing from $uri (id: $id)...") if( $DEBUG );
         chdir( "$rootdir/$id" );
-        run_systemcmd('rsync', '-aq', "$uri", "$rootdir/$id");
+        run_systemcmd('rsync', '-aq', '--delete', "$uri", "$rootdir/$id");
     } else  {
         info("No URI given as rsync source, skipping!\n");
     }
