@@ -48,6 +48,7 @@ Usage:
     snapshot    : create time stamped backups (hardlinked) of clone
     setup_test  : manipulate directory links in test repository
     setup_prod  : manipulate directory links in production repository
+    setup_vgpu  : manipulate directory links in vgpu repository
 
    NB: either an environment (under $CONFDIR) must be provided using the '-e' flag or there
        must exist local configuration ('config' and if necessary repofiles) in the current directory!
@@ -108,6 +109,7 @@ initrepo()
     if( [ ! -d $SNAPSHOTSDIR ] ); then mkdir $SNAPSHOTSDIR || ( echo "Could not create snapshot directory, quitting"; exit $ENODIR; ) fi
     if( [ ! -d $TESTDIR ] ) ; then mkdir $TESTDIR || ( echo "Could not create test directory, quitting"; exit $ENODIR; ) fi
     if( [ ! -d $PRODDIR ] ); then mkdir $PRODDIR || ( echo "Could not create prod directory, quitting"; exit $ENODIR; ) fi
+    if( [ ! -d $VGPUDIR ] ); then mkdir $VGPUDIR || ( echo "Could not create vgpu directory, quitting"; exit $ENODIR; ) fi
 
     # call external script to populate main local repository (using default repofile)
     sync $configdir
@@ -158,6 +160,14 @@ setup_prod()
     $BASEDIR/repo.pl $debug -c $configdir prod
 }
 
+# Set up vgpu repository according to configuration (vgpu)
+# Delegate to external repo script')
+setup_vgpu()
+{
+    configdir=$1
+    $BASEDIR/repo.pl $debug -c $configdir vgpu
+}
+
 
 #
 # Main part
@@ -184,6 +194,7 @@ REPODIR=$ROOT/repo
 SNAPSHOTSDIR=$ROOT/snapshots
 TESTDIR=$ROOT/test
 PRODDIR=$ROOT/prod
+VGPUDIR=$ROOT/vgpu
 
 case $command in
 
@@ -209,6 +220,11 @@ case $command in
 
     "setup_prod")
         setup_prod $environment
+        exit $ENORMAL
+        ;;
+
+    "setup_vgpu")
+        setup_vgpu $environment
         exit $ENORMAL
         ;;
 
