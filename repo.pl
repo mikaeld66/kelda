@@ -30,13 +30,28 @@ my $DEVDEBUG     = $FALSE;                      # development debug: set this to
 my $CONFIGDIR    = "/etc/kelda";                # default top level system-wide configuration directory
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
-my $TESTDIR      = "test";
-my $PRODDIR      = "prod";
 my $rootdir;                                    # top level local repository directory
 my $command;                                    # command for script
 my $opt;                                        # for argument and options handling
 my $usage;
 
+# Main configuration matrix
+my %modeconfig = (  'prod'  =>  {
+                                    'name'      => 'production',
+                                    'config'    => "$CONFIGDIR/prod.config",
+                                    'dir'       => 'prod'
+                                },
+                    'test'  =>  {
+                                    'name'      => 'testing',
+                                    'config'    => "$CONFIGDIR/test.config",
+                                    'dir'       => 'test',
+                                },
+                    'vgpu'  =>  {
+                                    'name'      => 'vgpu',
+                                    'config'    => "$CONFIGDIR/vgpu.config",
+                                    'dir'       => 'vgpu',
+                                },
+                 );
 
 #
 # Utility sub routines
@@ -168,6 +183,7 @@ sub usage  {
     print "                      The optional arguments 'repoid' refers to one or more ids in the configuration to fetch.\n";
     print "                      If none provided all external sources are retrieved.\n";
     print "'test'             :  Set up test repository (testrepofile required)\n";
+    print "'vgpu'             :  Set up vgpu repository (vgpurepofile required)\n";
     print "'prod'             :  Set up prod repository (test- _and_ prod-repofiles required)\n";
     print "\n";
     return 0;
@@ -181,6 +197,7 @@ sub usage  {
     'repo %o [command]',
     [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
+    [ 'vgpurepofile|v=s', "Repoconfiguration for local vgpu repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
     [ 'help|h',           "Usage help" ],
     [ 'debug|d',          "Debug mode (print more information)" ],
@@ -202,20 +219,19 @@ if($opt->help)  {
 
 if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir; }
 
-# we set these here in case the caller provided an alternative location
 my $CONFIG       = "$CONFIGDIR/config";                     # generic configuration
 my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo configuration file name
-my $TESTCONFIG   = "$CONFIGDIR/test.config";                # default test repo configuration
-my $PRODCONFIG   = "$CONFIGDIR/prod.config";                # default prod repo configuration
 
-if( $opt->testrepofile )  { $TESTCONFIG = $opt->testrepofile; }
-if( $opt->prodrepofile )  { $PRODCONFIG = $opt->prodrepofile; }
+if( $opt->testrepofile )  { $modeconfig{"test"}{"config"} = $opt->testrepofile; }
+if( $opt->prodrepofile )  { $modeconfig{"prod"}{"config"} = $opt->prodrepofile; }
+if( $opt->vgpurepofile )  { $modeconfig{"vgpu"}{"config"} = $opt->vgpurepofile; }
 
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
 given( $command )  {
     when( 'sync' )  { shift; sync(@ARGV); }
-    when( 'test' )  { test(); }
+    when( 'test' )  { test('test'); }
+    when( 'vgpu' )  { test('vgpu'); }
     when( 'prod' )  { prod(); }
     default         { print "\nUnknown command!\n"; usage(); }
 };
@@ -262,19 +278,21 @@ sub sync  {
 
 # command: test -- update pointers for test repository
 sub test  {
+    my $mode = $_[0];
     my %oldrepo;
     my @repoconfig;
     my $cfgyaml;
     my @links;
-    my $rootdir;
+    my ( $rootdir, $testdir, $snapshotdir );
 
-    if( ! -e $TESTCONFIG )  {
-        error( "'test' command but no test configuration available." );
+    if( ! -e $modeconfig{"$mode"}{'config'} )  {
+        error( "$modeconfig{\"$mode\"}{'name'} command but no appropriate configuration available." );
+        error( "Expected config: $modeconfig{\"$mode\"}{'config'}" );
         usage();
         croak "Quitting!";
     }
-    info( "Updating test...\n" );
-    @repoconfig = readlines( $TESTCONFIG );
+    info( "Updating $modeconfig{\"$mode\"}{'name'}...\n" );
+    @repoconfig = readlines( $modeconfig{"$mode"}{'config'} );
     $cfgyaml = YAML::Tiny->read( "$CONFIG" );
 
     # Ensure existence of root repositiory directory
@@ -283,8 +301,10 @@ sub test  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    reporoot( "$rootdir/$TESTDIR" );
-    clean_symlinks( "$rootdir/$TESTDIR" );
+    $testdir = "$rootdir/$modeconfig{\"$mode\"}{'dir'}";
+    $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
+    reporoot( "$testdir" );
+    clean_symlinks( "$testdir" );
 
     @links = sort { $b cmp $a } @repoconfig;
     foreach my $link ( @links )  {
@@ -294,12 +314,12 @@ sub test  {
         chomp $repo if $repo;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEVDEBUG)  {
-                info( "Linking $rootdir/$TESTDIR/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
+                info( "Linking $testdir/$repo from $snapshotdir/$source/$repo" );
             } else  {
-                if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
-                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$TESTDIR/$repo" || error("Could not make link for repo $repo");
+                if( -d "$snapshotdir/$source/$repo" )  {
+                    symlink "$snapshotdir/$source/$repo", "$testdir/$repo" || error("Could not make link for repo $repo");
                 } else  {
-                    error(" Source directory for $repo does not exist ($rootdir/$SNAPSHOTSDIR/$source/$repo) - skipping");
+                    error(" Source directory for $repo does not exist ($snapshotdir/$source/$repo) - skipping");
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -320,21 +340,21 @@ sub prod  {
     my @links;
     my $rootdir;
 
-    if( ! -e $TESTCONFIG )  {
+    if( ! -e $modeconfig{'test'}{'config'} )  {
         error( "'prod' command but no test configuration available!" );
         error( "Maybe provide one as an argument?" );
         usage();
         croak "Quitting!";
     }
-    if( ! -e $PRODCONFIG )  {
+    if( ! -e $modeconfig{'prod'}{'config'} )  {
         error( "'prod' command but no production configuration available!" );
         error( "Maybe provide one as an argument?" );
         usage();
         croak "Quitting!";
     }
     info( "Updating prod...\n" );
-    @prodconfig = readlines( $PRODCONFIG );
-    @testconfig = readlines( $TESTCONFIG );
+    @prodconfig = readlines( $modeconfig{'prod'}{'config'}  );
+    @testconfig = readlines( $modeconfig{'test'}{'config'}  );
     $cfgyaml    = YAML::Tiny->read( "$CONFIG" );
 
     # Ensure existence of root repositiory directory
@@ -343,8 +363,8 @@ sub prod  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    reporoot( "$rootdir/$PRODDIR" );
-    clean_symlinks( "$rootdir/$PRODDIR" );
+    reporoot( "$rootdir/$modeconfig{'prod'}{'dir'}" );
+    clean_symlinks( "$rootdir/$modeconfig{'prod'}{'dir'}" );
 
 
     @links = sort { $b cmp $a } @prodconfig;
@@ -358,14 +378,14 @@ sub prod  {
             if( ( ! grep { /$link/x } @testconfig) )  {
 #my $a = any { /$link/x } ("a", "b");
 #            if( none { /$link/x } @testconfig )  {
-                error( "$link is not allowed (not listed in test configuration: $TESTCONFIG)" );
+                error( "$link is not allowed (not listed in test configuration: $modeconfig{'test'}{'config'})" );
                 next;
             }
             if( $DEVDEBUG )  {
-                info( "Linking $rootdir/$PRODDIR/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
+                info( "Linking $rootdir/$modeconfig{'prod'}{'dir'}/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
             } else  {
                 if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
-                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$PRODDIR/$repo" || error( "Could not make link for repo $repo" );
+                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$modeconfig{'prod'}{'dir'}/$repo" || error( "Could not make link for repo $repo" );
                 } else  {
                     error( "Source directory for $repo does not exist ($rootdir/$SNAPSHOTSDIR/$source/$repo) - skipping" );
                 }
