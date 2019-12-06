@@ -62,12 +62,11 @@ EOF
 # default location for configuration if no environment provided
 environment=$PWD
 
-while getopts ":hed" opt; do
+while getopts ":he:d" opt; do
     case $opt in
 
         e)
-            shift
-            environment=$CONFDIR/$1
+            environment=$CONFDIR/$OPTARG
             ;;
         d)
             debug="-d"
@@ -144,32 +143,17 @@ snapshot()
     ln -s $SNAPSHOTSDIR/$datedir $SNAPSHOTSDIR/current
 }
 
-# Set up test repository according to configuration (test.config)
-# Delegate to external repo script')
-setup_test()
+# Set up repository according to configuration
+# Delegate to external repo script
+setup()
 {
-    configdir=$1
-    $BASEDIR/repo.pl $debug -c $configdir test
-}
-
-# Set up prod repository according to configuration (prod.config)
-# Delegate to external repo script')
-setup_prod()
-{
-    configdir=$1
-    $BASEDIR/repo.pl $debug -c $configdir prod
-}
-
-# Set up vgpu repository according to configuration (vgpu)
-# Delegate to external repo script')
-setup_vgpu()
-{
-    configdir=$1
-    $BASEDIR/repo.pl $debug -c $configdir vgpu
+    mode=$1
+    shift
+    if [ $# -gt 0 ]; then "configopt=-c $CONFDIR/$2"; fi
+    $BASEDIR/repo.pl $debug $configopt $mode
 }
 
 
-#
 # Main part
 #
 
@@ -214,17 +198,17 @@ case $command in
         ;;
 
     "setup_test")
-        setup_test $environment
+        setup test $environment
         exit $ENORMAL
         ;;
 
     "setup_prod")
-        setup_prod $environment
+        setup prod $environment
         exit $ENORMAL
         ;;
 
     "setup_vgpu")
-        setup_vgpu $environment
+        setup vgpu $environment
         exit $ENORMAL
         ;;
 

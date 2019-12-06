@@ -21,6 +21,7 @@ use Getopt::Long::Descriptive;
 use File::Basename;
 use File::Temp qw(tempfile);
 use Digest::MD5 qw(md5_hex);
+use Data::Dumper;
 
 Readonly my $FALSE => 0;
 Readonly my $TRUE  => 1;
@@ -225,7 +226,8 @@ my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo 
 if( $opt->testrepofile )  { $modeconfig{"test"}{"config"} = $opt->testrepofile; }
 if( $opt->prodrepofile )  { $modeconfig{"prod"}{"config"} = $opt->prodrepofile; }
 if( $opt->vgpurepofile )  { $modeconfig{"vgpu"}{"config"} = $opt->vgpurepofile; }
-
+#MD
+print $opt->configdir;
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
 given( $command )  {
