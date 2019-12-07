@@ -28,7 +28,7 @@ Readonly my $TRUE  => 1;
 
 my $DEBUG        = $FALSE;
 my $DEVDEBUG     = $FALSE;                      # development debug: set this to $TRUE to just write what should otherwise be done
-my $CONFIGDIR    = "/etc/kelda";                # default top level system-wide configuration directory
+my $CONFIGDIR    = "/etc/kelda/";               # default top level system-wide configuration directory
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
 my $rootdir;                                    # top level local repository directory
@@ -39,17 +39,17 @@ my $usage;
 # Main configuration matrix
 my %modeconfig = (  'prod'  =>  {
                                     'name'      => 'production',
-                                    'config'    => "$CONFIGDIR/prod.config",
+                                    'config'    => "prod.config",
                                     'dir'       => 'prod'
                                 },
                     'test'  =>  {
                                     'name'      => 'testing',
-                                    'config'    => "$CONFIGDIR/test.config",
+                                    'config'    => "test.config",
                                     'dir'       => 'test',
                                 },
                     'vgpu'  =>  {
                                     'name'      => 'vgpu',
-                                    'config'    => "$CONFIGDIR/vgpu.config",
+                                    'config'    => "vgpu.config",
                                     'dir'       => 'vgpu',
                                 },
                  );
@@ -218,16 +218,15 @@ if($opt->help)  {
     exit 0;
 }
 
-if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir; }
+if( $opt->configdir    )  { $CONFIGDIR  = $opt->configdir . "/"; }
 
 my $CONFIG       = "$CONFIGDIR/config";                     # generic configuration
 my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo configuration file name
 
-if( $opt->testrepofile )  { $modeconfig{"test"}{"config"} = $opt->testrepofile; }
-if( $opt->prodrepofile )  { $modeconfig{"prod"}{"config"} = $opt->prodrepofile; }
-if( $opt->vgpurepofile )  { $modeconfig{"vgpu"}{"config"} = $opt->vgpurepofile; }
-#MD
-print $opt->configdir;
+$modeconfig{"test"}{"config"} = ( $opt->testrepofile ? $opt->testrepofile : $CONFIGDIR . $modeconfig{"test"}{"config"} );
+$modeconfig{"prod"}{"config"} = ( $opt->prodrepofile ? $opt->prodrepofile : $CONFIGDIR . $modeconfig{"prod"}{"config"} );
+$modeconfig{"vgpu"}{"config"} = ( $opt->vgpurepofile ? $opt->vgpurepofile : $CONFIGDIR . $modeconfig{"vgpu"}{"config"} );
+
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
 given( $command )  {
