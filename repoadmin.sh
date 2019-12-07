@@ -149,7 +149,7 @@ setup()
 {
     mode=$1
     shift
-    if [ $# -gt 0 ]; then "configopt=-c $CONFDIR/$2"; fi
+    if [ $# -gt 0 ]; then "configopt=-c $CONFDIR/$1"; fi
     $BASEDIR/repo.pl $debug $configopt $mode
 }
 
