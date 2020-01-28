@@ -466,15 +466,18 @@ TMPL_END
             if( $ret == 0 and $gpgkey )  {
                 my $cwd = cwd();
                 chdir("$rootdir/$id");
-                if( $DEBUG )  {
-                        info("Retrieving gpg key from $gpgkey using curl");
-                        run_systemcmd('curl', "$gpgkey", "-vO");
-                } else  {
-                        run_systemcmd('curl', "$gpgkey", "-sO");
+                my @gpgkeys = split '<', $gpgkey;
+                foreach (@gpgkeys)  {
+                    if( $DEBUG )  {
+                        info("Retrieving gpg key from $_ using curl");
+                        run_systemcmd('curl', "$_", "-vO");
+                    } else  {
+                        run_systemcmd('curl', "$_", "-sO");
+                    }
+                    info ("Importing gpg key $_ using 'rpm --import'") if ( $DEBUG );
+                    run_systemcmd('rpm', '--import', "$_");
+                    chdir($cwd);
                 }
-                info ("Importing gpg key $gpgkey using 'rpm --import'") if ( $DEBUG );
-                run_systemcmd('rpm', '--import', "$gpgkey");
-                chdir($cwd);
             }
         } else  {
             error( "Something happened during reposync, error#: $ret" );
