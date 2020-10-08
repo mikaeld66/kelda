@@ -32,13 +32,13 @@ usage()
 {
     cat << EOF
 
-$0 - Administrating Norcams Openstack local repository
+$0 - Administrating Norcams local repositories and mirrors
 
 Usage:
 
   $0 -h|[-e <environment>][-d] <command> [...]
 
-    -e : environment under $CONFDIR to use if no local configuration
+    -e : configuration environment under $CONFDIR to use if no local configuration
     -d : debug output
 
   Commands:
@@ -46,11 +46,9 @@ Usage:
     init        : initialize directory structure and initial retrieval of source
     sync        : update/freshen repositories from the external sources
     snapshot    : create time stamped backups (hardlinked) of clone
-    setup_test  : manipulate directory links in test repository
-    setup_prod  : manipulate directory links in production repository
-    setup_vgpu  : manipulate directory links in vgpu repository
+    setup <env> : manipulate directory links in [prod|test|...] repository, environment must be provided as an extra parameter
 
-   NB: either an environment (under $CONFDIR) must be provided using the '-e' flag or there
+   NB: either a configuration environment (under $CONFDIR) must be provided using the '-e' flag or there
        must exist local configuration ('config' and if necessary repofiles) in the current directory!
 
 EOF
@@ -87,7 +85,14 @@ done
 
 shift $((OPTIND-1))
 command=$1;
-
+if [ "$command" == "setup" ]; then
+    shift
+    setup_env=$1;
+    if [ "$setup_env"x == "x" ]; then
+        echo "'setup' must be accompanied by an environment (e.g. 'test', 'prod' etc)"
+        exit $EINVALOPT
+    fi
+fi
 
 # Fill repositories according to configuration ('repoconfig')
 sync()
@@ -108,7 +113,6 @@ initrepo()
     if( [ ! -d $SNAPSHOTSDIR ] ); then mkdir $SNAPSHOTSDIR || ( echo "Could not create snapshot directory, quitting"; exit $ENODIR; ) fi
     if( [ ! -d $TESTDIR ] ) ; then mkdir $TESTDIR || ( echo "Could not create test directory, quitting"; exit $ENODIR; ) fi
     if( [ ! -d $PRODDIR ] ); then mkdir $PRODDIR || ( echo "Could not create prod directory, quitting"; exit $ENODIR; ) fi
-    if( [ ! -d $VGPUDIR ] ); then mkdir $VGPUDIR || ( echo "Could not create vgpu directory, quitting"; exit $ENODIR; ) fi
 
     # call external script to populate main local repository (using default repofile)
     sync $configdir
@@ -178,7 +182,6 @@ REPODIR=$ROOT/repo
 SNAPSHOTSDIR=$ROOT/snapshots
 TESTDIR=$ROOT/test
 PRODDIR=$ROOT/prod
-VGPUDIR=$ROOT/vgpu
 
 case $command in
 
@@ -197,18 +200,8 @@ case $command in
         exit $ENORMAL
         ;;
 
-    "setup_test")
-        setup test $environment
-        exit $ENORMAL
-        ;;
-
-    "setup_prod")
-        setup prod $environment
-        exit $ENORMAL
-        ;;
-
-    "setup_vgpu")
-        setup vgpu $environment
+    "setup")
+        setup $setup_env $environment
         exit $ENORMAL
         ;;
 

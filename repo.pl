@@ -47,11 +47,6 @@ my %modeconfig = (  'prod'  =>  {
                                     'config'    => "test.config",
                                     'dir'       => 'test',
                                 },
-                    'vgpu'  =>  {
-                                    'name'      => 'vgpu',
-                                    'config'    => "vgpu.config",
-                                    'dir'       => 'vgpu',
-                                },
                  );
 
 #
@@ -184,7 +179,6 @@ sub usage  {
     print "                      The optional arguments 'repoid' refers to one or more ids in the configuration to fetch.\n";
     print "                      If none provided all external sources are retrieved.\n";
     print "'test'             :  Set up test repository (testrepofile required)\n";
-    print "'vgpu'             :  Set up vgpu repository (vgpurepofile required)\n";
     print "'prod'             :  Set up prod repository (test- _and_ prod-repofiles required)\n";
     print "\n";
     return 0;
@@ -198,7 +192,6 @@ sub usage  {
     'repo %o [command]',
     [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
-    [ 'vgpurepofile|v=s', "Repoconfiguration for local vgpu repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
     [ 'help|h',           "Usage help" ],
     [ 'debug|d',          "Debug mode (print more information)" ],
@@ -225,14 +218,12 @@ my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo 
 
 $modeconfig{"test"}{"config"} = ( $opt->testrepofile ? $opt->testrepofile : $CONFIGDIR . $modeconfig{"test"}{"config"} );
 $modeconfig{"prod"}{"config"} = ( $opt->prodrepofile ? $opt->prodrepofile : $CONFIGDIR . $modeconfig{"prod"}{"config"} );
-$modeconfig{"vgpu"}{"config"} = ( $opt->vgpurepofile ? $opt->vgpurepofile : $CONFIGDIR . $modeconfig{"vgpu"}{"config"} );
 
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
 given( $command )  {
     when( 'sync' )  { shift; sync(@ARGV); }
     when( 'test' )  { test('test'); }
-    when( 'vgpu' )  { test('vgpu'); }
     when( 'prod' )  { prod(); }
     default         { print "\nUnknown command!\n"; usage(); }
 };
