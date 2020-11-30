@@ -217,6 +217,7 @@ snapshot
 
 setup <environment>
   manipulate directory links in repository for <environment>
+
   'environment' is usually "test" or "prod"
 
 The script assumes the top level directory is the same for all parts of the system, that is: the main repo hierarchy, the snapshots and the test- and production environment.
