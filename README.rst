@@ -32,11 +32,11 @@ help
   short usage description
 
 sync
-  seeds or updates the local main repository hierarchy based on given configuration 
+  seeds or updates the local main repository hierarchy based on given configuration
   (default configuration file: "*repofile*")
 
 test
-  set up links in the test directory pointing to snapshots as configured 
+  set up links in the test directory pointing to snapshots as configured
   (default configuration file: "*repofile.test*")
 
 prod
@@ -79,22 +79,22 @@ Current methods supported
 """""""""""""""""""""""""
 
 - GIT
-  
+
   Checkout of a normal git repository. No facilitation for authentication is
   provided, but i.e. ssh key authentication might be configured outside of this.
-  
+
     - type: *git*
     - required arguments:
 
       **uri**
 
 - YUM
-  
+
   Repository sync of a remote YUM repo. Metadata is produced after the sync.
-  
+
     - type: *yum*
     - required arguments:
-      
+
       **repoid**
 
     - optional arguments:
@@ -102,13 +102,13 @@ Current methods supported
       **repofile** (default: *repo.conf.d/yum.conf.d/yum.conf*)
 
 - FILE
-  
+
   This method fetches a file using `wget`, and thus capable of retrieveing any
   file which can be fetched by a `wget` supported uri.
   Optionally an `md5sum` might be provided, which will be compared to the
   computed md5 of a previously retrieved file. If they do not match the file
   will be fetched anew, otherwise nothing is done.
-  
+
     - type: *file*
     - required arguments:
 
@@ -119,19 +119,19 @@ Current methods supported
       **checksum**: *If not provided the file is ALLWAYS fetched, otherwise the checksum is first verified if file exists locally*
 
 - RSYNC
-  
+
   Standard `rsync`, nothing fancy.
-  
+
     - type: *rsync*
     - required arguments:
 
       **uri**
 
 - COMMAND
-  
+
   Fallback command execution. If no handlers of required type is defined or
   feasible, then define a command which will then be executed to fetch the data.
-  
+
     - type: *exec*
     - required arguments:
 
@@ -215,12 +215,9 @@ init
 snapshot
   create time stamped backups (hardlinked) of repositories
 
-setup_test
-  manipulate directory links in test repository
-
-setup_prod
-  manipulate directory links in production repository
-
+setup <environment>
+  manipulate directory links in repository for <environment>
+  'environment' is usually "test" or "prod"
 
 The script assumes the top level directory is the same for all parts of the system, that is: the main repo hierarchy, the snapshots and the test- and production environment.
 
@@ -244,7 +241,7 @@ The recommended procedure for setting up the repository system:
 
 After this one might run **repoadmin.sh snapshot** to create a new snapshot to get some more alternatives to experiment with. This will not consume much storage space as it will hardlink to previous snapshot. If there is a need to start from scratch just recursively delete the top level directory.
 
-When everything is configured and tested, set up for instance cron jobs to run the *sync* and/or *snapshot* commands regurarly.
+When everything is configured and tested, set up cron jobs to run the *sync* and/or *snapshot* commands regurarly.
 
 Lastly set up something to serve the test and prod areas, typically this would be via a web service, which should be a simple task. But that is beyond this project and left for the user.
 
