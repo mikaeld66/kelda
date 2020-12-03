@@ -12,6 +12,7 @@
 #           Will never remove snapshots newer than the oldest
 #           still in use
 #      Timestamps in kelda format: YYYY-MM-DD-HHMM
+#   -r <repository name> = purge this repository and all its snapshots
 #
 
 
