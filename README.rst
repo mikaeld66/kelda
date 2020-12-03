@@ -198,14 +198,17 @@ The script require a number of modules, some of which might not be installed on 
 The latter is only for DEBUG mode.
 
 
-Administration wrapper: repoadmin.sh
-====================================
+Administration wrappers
+=======================
+
+repoadmin.sh
+------------
 
 This Bash script is a convenience wrapper around the main Perl script. It is ment for cron jobs or manual administration thee routine tasks. The script has routines
 for initializing the system and calling the main script with default values for all normal procedures.
 
 Commands
---------
+''''''''
 
 These commands are supported by the script:
 
@@ -222,6 +225,30 @@ setup <environment>
 
 The script assumes the top level directory is the same for all parts of the system, that is: the main repo hierarchy, the snapshots and the test- and production environment.
 
+
+snapshot_cleanup.sh
+-------------------
+
+A utility script which is for purging unused snapshots and repositories. If
+older snapshots are not required anymore, then they may be purged by executing
+this script. Additionally it may be used to remove any traces of repositories
+not used; that is both the mirror and all snapshots of it.
+
+commands
+''''''''
+
+*/usr/local/sbin/snapshot_cleanup.sh [-uhd] [ [-t <timestamp>] | [-r <repository name>] ]*
+
+ -t : Expunge all snapshots (of all mirrors) taken before this timestamp
+      If no date provided then remove all snapshots older than oldest date used in `prod.conf`
+
+ -r : Purge named repository completely
+      Removes mirror and every snapshot of this repository (only) which exists on server
+
+ `-t` and `-r` are mutually exclusive!
+
+  -d   : `dryrun` - just print what should otherwise be done
+  -h|u : help
 
 Installation procedure
 ======================
@@ -242,7 +269,7 @@ The recommended procedure for setting up the repository system:
 
 After this one might run **repoadmin.sh snapshot** to create a new snapshot to get some more alternatives to experiment with. This will not consume much storage space as it will hardlink to previous snapshot. If there is a need to start from scratch just recursively delete the top level directory.
 
-When everything is configured and tested, set up cron jobs to run the *sync* and/or *snapshot* commands regurarly.
+When everything is configured and tested, set up cron jobs to run the *sync* and/or *snapshot* commands regurarly. One might also consider running the cleanup script every day/night to remove old and unused snapshots automatically.
 
 Lastly set up something to serve the test and prod areas, typically this would be via a web service, which should be a simple task. But that is beyond this project and left for the user.
 
