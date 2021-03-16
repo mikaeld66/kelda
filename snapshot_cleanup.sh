@@ -13,6 +13,7 @@
 #           still in use
 #      Timestamps in kelda format: YYYY-MM-DD-HHMM
 #   -r <repository name> = purge this repository and all its snapshots
+#                          archive most recent
 #
 
 
@@ -22,9 +23,11 @@ readonly EXIT_USERREQUEST=2
 readonly EXIT_TIMESTAMPERROR=3
 readonly EXIT_INVALIDOPTION=4
 
-BASEDIR=/var/www/html/uh-iaas
-SNAPSHOTDIR=${BASEDIR}/snapshots
-KELDACONFDIR=/etc/kelda/prod
+readonly BASEDIR=/var/www/html
+readonly ARCHIVEDIR=${BASEDIR}/archive
+readonly WEBDIR=${BASEDIR}/uh-iaas
+readonly SNAPSHOTDIR=${WEBDIR}/snapshots
+readonly KELDACONFDIR=/etc/kelda/prod
 
 # Counter
 removed=0
@@ -42,6 +45,7 @@ usage()
     echo "       <timestamp> = YYYY-MM-DD-HHMM (kelda config format)"
     echo "   -r: remove named repository completely (incl. all snapshots taken"
     echo "       <repository name> = directory name under 'repo'"
+    echo "       Latest snapshot is archived"
     echo
     echo "NB: '-r' and '-t' are mutually exclusive"
     echo
@@ -107,7 +111,8 @@ fi
 
 # if purging repo then do that now and then exit
 if [ "${purge_repo}x" != "x" ]; then
-    echo "Removing all traces of the $purge_repo repository ..."
+    echo "Removing the $purge_repo repository incl. snapshots..."
+    echo "Most recent snapshot saved in archive"
     read -p "Proceed? " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -116,13 +121,24 @@ if [ "${purge_repo}x" != "x" ]; then
     fi
 
     # Got 'go ahead'
-    # 1. remove the mirror itself
+    # 1. archive most recent snapshot
+    newest_dir=$(ls -dt ${SNAPSHOTDIR}/*/$purge_repo | head -1)     # find latest snapshot containing the repository under process
+    newest_dir=${newest_dir%/*}                                     # extract the time stamped directory name
+    newest_dir=${newest_dir##*/}
+
     if [ -n "$dryrun" ]; then
-        echo "Would run: rm -rf ${BASEDIR}/repo/${purge_repo}"
+        echo "Would run: mkdir ${ARCHIVEDIR}/${purge_repo}/$newest_di; rsync -ah ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/"
     else
-        [ -d "${BASEDIR}/repo/${purge_repo}" ] && rm -rf ${BASEDIR}/repo/${purge_repo}
+        mkdir ${ARCHIVEDIR}/${purge_repo}/$newest_dir
+        rsync -ah ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/
     fi
-    # 2. find and remove all snapshots of it
+    # 2. remove the mirror itself
+    if [ -n "$dryrun" ]; then
+        echo "Would run: rm -rf ${WEBDIR}/repo/${purge_repo}"
+    else
+        [ -d "${WEBDIR}/repo/${purge_repo}" ] && rm -rf ${WEBDIR}/repo/${purge_repo}
+    fi
+    # 3. find and remove all snapshots of it
     if [ -n "$dryrun" ]; then
         find ${SNAPSHOTDIR} -maxdepth 2 -type d -name ${purge_repo} -exec echo "Would run: rm -rf {}" \;
     else
