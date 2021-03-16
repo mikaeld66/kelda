@@ -127,9 +127,9 @@ if [ "${purge_repo}x" != "x" ]; then
     newest_dir=${newest_dir##*/}
 
     if [ -n "$dryrun" ]; then
-        echo "Would run: mkdir ${ARCHIVEDIR}/${purge_repo}/$newest_di; rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/"
+        echo "Would run: mkdir -p ${ARCHIVEDIR}/${purge_repo}/$newest_di; rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/"
     else
-        mkdir ${ARCHIVEDIR}/${purge_repo}/$newest_dir
+        mkdir -p ${ARCHIVEDIR}/${purge_repo}/$newest_dir
         rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/
     fi
     # 2. remove the mirror itself
