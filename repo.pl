@@ -28,9 +28,10 @@ Readonly my $TRUE  => 1;
 
 my $DEBUG        = $FALSE;
 my $DEVDEBUG     = $FALSE;                      # development debug: set this to $TRUE to just write what should otherwise be done
-my $CONFIGDIR    = "/etc/kelda/";               # default top level system-wide configuration directory
+my $CONFIGDIR    = "/etc/kelda/conf";           # default top level system-wide configuration directory
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
+my $DIST         = '';                          # used if test/prod should be set up with distribution specific subdirectories
 my $rootdir;                                    # top level local repository directory
 my $command;                                    # command for script
 my $opt;                                        # for argument and options handling
@@ -193,6 +194,7 @@ sub usage  {
     [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
+    [ 'dist|D=s',         "distribution (used for dist specific subdirectories)" ],
     [ 'help|h',           "Usage help" ],
     [ 'debug|d',          "Debug mode (print more information)" ],
 );
@@ -218,6 +220,7 @@ my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo 
 
 $modeconfig{"test"}{"config"} = ( $opt->testrepofile ? $opt->testrepofile : $CONFIGDIR . $modeconfig{"test"}{"config"} );
 $modeconfig{"prod"}{"config"} = ( $opt->prodrepofile ? $opt->prodrepofile : $CONFIGDIR . $modeconfig{"prod"}{"config"} );
+if ( $opt->dist )  { $DIST = $opt->dist; }
 
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
@@ -254,11 +257,12 @@ sub sync  {
     if( ! ( @ids ) )  { @ids = keys %{ $repoyaml->[0] }; }  # if no ids provided use all from configuration
     for my $id ( @ids )  {
         my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
+        my $dist = defined $repoyaml->[0]{$id}{'dist'} ? $repoyaml->[0]{$id}{'dist'} : 'generic';
 
         if($type)  {                                        # sanity check: all repo handlers must have type defined
-            my $repocreated = reporoot( "$rootdir/$REPODIR/$id" );
+            my $repocreated = reporoot( "$rootdir/$REPODIR/$dist/$id" );
             if(defined &{$type})  {                         # check if appropriate handler routine is defined
-                $type->( "$rootdir/$REPODIR", $id, $repoyaml->[0]{$id} );
+                $type->( "$rootdir/$REPODIR/$dist", $id, $repoyaml->[0]{$id} );
             } else  {
                 error("Handler for type --> $type <-- does not exist. Skipping...");
             }
@@ -296,7 +300,11 @@ sub test  {
     $testdir = "$rootdir/$modeconfig{\"$mode\"}{'dir'}";
     $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
     reporoot( "$testdir" );
-    clean_symlinks( "$testdir" );
+    if ( ! -d "$testdir/$DIST" )  {
+        mkdir "$testdir/$DIST";
+    } else  {
+        clean_symlinks( "$testdir/$DIST" );
+    }
 
     @links = sort { $b cmp $a } @repoconfig;
     foreach my $link ( @links )  {
@@ -306,12 +314,12 @@ sub test  {
         chomp $repo if $repo;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEVDEBUG)  {
-                info( "Linking $testdir/$repo from $snapshotdir/$source/$repo" );
+                info( "Linking $testdir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
             } else  {
-                if( -d "$snapshotdir/$source/$repo" )  {
-                    symlink "$snapshotdir/$source/$repo", "$testdir/$repo" || error("Could not make link for repo $repo");
+                if( -d "$snapshotdir/$source/$DIST/$repo" )  {
+                    symlink "$snapshotdir/$source/$DIST/$repo", "$testdir/$DIST/$repo" || error("Could not make link for repo $repo");
                 } else  {
-                    error(" Source directory for $repo does not exist ($snapshotdir/$source/$repo) - skipping");
+                    error(" Source directory for $repo does not exist ($snapshotdir/$source/$DIST/$repo) - skipping");
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -330,7 +338,7 @@ sub prod  {
     my $cfgyaml;                                            # generic configuration
     my %oldrepo;
     my @links;
-    my $rootdir;
+    my ( $rootdir, $proddir, $snapshotdir );
 
     if( ! -e $modeconfig{'test'}{'config'} )  {
         error( "'prod' command but no test configuration available!" );
@@ -355,9 +363,14 @@ sub prod  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    reporoot( "$rootdir/$modeconfig{'prod'}{'dir'}" );
-    clean_symlinks( "$rootdir/$modeconfig{'prod'}{'dir'}" );
-
+    $proddir = "$rootdir/$modeconfig{'prod'}{'dir'}";
+    $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
+    reporoot( "$proddir" );
+    if ( ! -d "$proddir/$DIST" )  {
+        mkdir "$proddir/$DIST";
+    } else  {
+        clean_symlinks( "$proddir/$DIST" );
+    }
 
     @links = sort { $b cmp $a } @prodconfig;
     foreach my $link ( @links )  {
@@ -374,12 +387,12 @@ sub prod  {
                 next;
             }
             if( $DEVDEBUG )  {
-                info( "Linking $rootdir/$modeconfig{'prod'}{'dir'}/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
+                info( "Linking $proddir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
             } else  {
-                if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
-                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$modeconfig{'prod'}{'dir'}/$repo" || error( "Could not make link for repo $repo" );
+                if( -d "$snapshotdir/$source/$DIST/$repo" )  {
+                    symlink "$snapshotdir/$source/$DIST/$repo", "$proddir/$DIST/$repo" || error( "Could not make link for repo $repo" );
                 } else  {
-                    error( "Source directory for $repo does not exist ($rootdir/$SNAPSHOTSDIR/$source/$repo) - skipping" );
+                    error( "Source directory for $repo does not exist ($snapshotdir/$source/$DIST/$repo) - skipping" );
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -411,6 +424,7 @@ sub yum {
     my $reposdir = $repoinfo->{'reposdir'};
     my $repoid   = $repoinfo->{'repoid'};
     my $gpgkey   = $repoinfo->{'gpgkey'};
+    my $dist     = ( $repoinfo->{'dist'} ? $repoinfo->{'dist'} : "generic" );
     my $groupcmd = '';
     my ( $fh, $yumtmp, @yumconf );
     my $ret;
@@ -429,10 +443,10 @@ installonly_limit=3
 reposdir=[%REPOSDIR%]
 TMPL_END
 
-    if( ! $reposdir )  { $reposdir = "$CONFIGDIR/yum.repos.d"; }
+    $reposdir = ( $reposdir ? "$CONFIGDIR/$reposdir" : "$CONFIGDIR/$dist/yum.repos.d" );
 
     if( $repoid )  {
-        # generate yum configurstion
+        # generate yum configuration
         ($fh, $yumtmp) = tempfile( "yumXXXX", SUFFIX => '.conf', DIR => '/tmp' );
         @yumconf = $yumconftmpl =~ s/\[%REPOSDIR%\]/$reposdir/r;
         print( $fh @yumconf);
