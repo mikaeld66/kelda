@@ -35,13 +35,17 @@ sync
   seeds or updates the local main repository hierarchy based on given configuration
   (default configuration file: "*repofile*")
 
-test
-  set up links in the test directory pointing to snapshots as configured
-  (default configuration file: "*repofile.test*")
+test|prod
+  set up links in the directory corrsponding to environment in argument, pointing to
+  snapshots as configured (default configuration files: "*[test|prod].conf*")
 
-prod
-  set up links in the prod directory pointing to snapshots as configured
-  (default configuration file: "*repofile.prod*")
+init
+  create the full environment, including necessary directories and perform the
+  initial mirroring and initial snapshot
+
+snapshot
+  take an incremental snapshot (relating to previous snapshot), named after date
+  and time
 
 
 sync
@@ -54,7 +58,7 @@ according to the method being used. They are described later in this document.
 *Default configuration files*
 
 :Repository file:
-  repofile
+  repo.conf
 
 :Generic file:
   config
@@ -77,6 +81,10 @@ new method to be available. The routine will be called with two arguments:
 
 Current methods supported
 """""""""""""""""""""""""
+
+All methods support the **dist** option. This decides which architecture the
+repository is meant for, and thus the subdirectory to mirror under. Default is
+``generic``.
 
 - GIT
 
@@ -127,16 +135,6 @@ Current methods supported
 
       **uri**
 
-- COMMAND
-
-  Fallback command execution. If no handlers of required type is defined or
-  feasible, then define a command which will then be executed to fetch the data.
-
-    - type: *exec*
-    - required arguments:
-
-      **exec**: *Command to be executed verbatim. It is assumed the script is never runned as a web service etc!*
-
 
 test
 ----
@@ -149,7 +147,7 @@ any more is unpresented from the consumer.
 *Default configuration files*
 
 :Repository file:
-  repofile.test
+  test.conf
 
 :Generic file:
   config
@@ -175,8 +173,8 @@ the test configuration will lead to the removal of any corresponding link in the
 
 
 :Repository files:
-  repofile.prod
-  repofile.test
+  prod.conf
+  test.conf
 
 :Generic file:
   config
@@ -205,7 +203,9 @@ repoadmin.sh
 ------------
 
 This Bash script is a convenience wrapper around the main Perl script. It is ment for cron jobs or manual administration thee routine tasks. The script has routines
-for initializing the system and calling the main script with default values for all normal procedures.
+for initializing the system and calling the main script with default values for all normal procedures. If no `test` or `prod` configuration found in root configuration,
+directory, all sub directories will be searched instead, and *repo.pl* run once
+for each which contains valid configuration.
 
 Commands
 ''''''''
@@ -232,7 +232,8 @@ snapshot_cleanup.sh
 A utility script which is for purging unused snapshots and repositories. If
 older snapshots are not required anymore, then they may be purged by executing
 this script. Additionally it may be used to remove any traces of repositories
-not used; that is both the mirror and all snapshots of it.
+not used; that is both the mirror and all snapshots of it. In the latter case an
+archive will be made of the last snapshot of this repository.
 
 commands
 ''''''''
