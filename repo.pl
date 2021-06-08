@@ -32,6 +32,7 @@ my $CONFIGDIR    = "/etc/kelda/conf";           # default top level system-wide 
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
 my $DIST         = '';                          # used if test/prod should be set up with distribution specific subdirectories
+my $POSTCMD_DIR  = '/root/postcmd';             # location of post commands/scripts
 my $rootdir;                                    # top level local repository directory
 my $command;                                    # command for script
 my $opt;                                        # for argument and options handling
@@ -237,6 +238,7 @@ sub sync  {
     my @ids = defined $_[0] ? @_ : () ;                     # specific repo(s) to fetch or all?
     my $repoyaml;                                           # content of main repo configuration file ('repofile')
     my $cfgyaml;                                            # generic configuration
+    my $postcmd;
 
     # read configuration ("profile")
     if($DEVDEBUG)  {
@@ -262,7 +264,18 @@ sub sync  {
         if($type)  {                                        # sanity check: all repo handlers must have type defined
             my $repocreated = reporoot( "$rootdir/$REPODIR/$dist/$id" );
             if(defined &{$type})  {                         # check if appropriate handler routine is defined
+                $postcmd = $repoyaml->[0]{$id}{'postcmd'};  # post command to execute after sync is finished
                 $type->( "$rootdir/$REPODIR/$dist", $id, $repoyaml->[0]{$id} );
+                # run post command if any defined
+                if($postcmd)  {
+                    # for safety reasons we only accept scripts or commands located into a predetermined location,
+                    # which should be somewhere in root home directory
+                    $postcmd = basename($postcmd);          # get filename of command/script
+                    if ( -x "$POSTCMD_DIR/$postcmd" )  {    # make sure we only look into our pre defined directory
+                                                            # and that it is marked executable
+                        system("$POSTCMD_DIR/$postcmd");
+                    } else  { info("postcmd does not exist, is not accessible or is not set executable : $POSTCMD_DIR/$postcmd\n"); }
+                }
             } else  {
                 error("Handler for type --> $type <-- does not exist. Skipping...");
             }
