@@ -58,7 +58,7 @@ according to the method being used. They are described later in this document.
 *Default configuration files*
 
 :Repository file:
-  repo.conf
+  repo.config
 
 :Generic file:
   config
@@ -158,7 +158,7 @@ any more is unpresented from the consumer.
 *Default configuration files*
 
 :Repository file:
-  [<dist>/]test.conf
+  [<dist>/]test.config
 
 :Generic file:
   config
@@ -184,8 +184,8 @@ the test configuration will lead to the removal of any corresponding link in the
 
 
 :Repository files:
-  [<dist>/]prod.conf
-  [<dist>/]test.conf
+  [<dist>/]prod.config
+  [<dist>/]test.config
 
 :Generic file:
   config
@@ -252,7 +252,7 @@ commands
 */usr/local/sbin/snapshot_cleanup.sh [-uhd] [ [-t <timestamp>] | [-r <repository name>] ]*
 
  -t : Expunge all snapshots (of all mirrors) taken before this timestamp
-      If no date provided then remove all snapshots older than oldest date used in `prod.conf`
+      If no date provided then remove all snapshots older than oldest date used in `prod.config`
 
  -r : Purge named repository completely
       Removes mirror and every snapshot of this repository (only) which exists on server
