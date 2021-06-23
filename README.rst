@@ -35,13 +35,17 @@ sync
   seeds or updates the local main repository hierarchy based on given configuration
   (default configuration file: "*repofile*")
 
-test
-  set up links in the test directory pointing to snapshots as configured
-  (default configuration file: "*repofile.test*")
+test|prod
+  set up links in the directory corrsponding to environment in argument, pointing to
+  snapshots as configured (default configuration files: "*[test|prod].conf*")
 
-prod
-  set up links in the prod directory pointing to snapshots as configured
-  (default configuration file: "*repofile.prod*")
+init
+  create the full environment, including necessary directories and perform the
+  initial mirroring and initial snapshot
+
+snapshot
+  take an incremental snapshot (relating to previous snapshot), named after date
+  and time
 
 
 sync
@@ -54,7 +58,7 @@ according to the method being used. They are described later in this document.
 *Default configuration files*
 
 :Repository file:
-  repofile
+  repo.config
 
 :Generic file:
   config
@@ -77,6 +81,21 @@ new method to be available. The routine will be called with two arguments:
 
 Current methods supported
 """""""""""""""""""""""""
+
+All methods support the **dist** option. This decides which architecture the
+repository is meant for, and thus the subdirectory to mirror under. Default is
+``generic``.
+
+Name of repository
+^^^^^^^^^^^^^^^^^^
+
+Repositories synced will be placed into a sub directory, which name is derived
+from this rule set:
+
+1. The argument **name** if this is supplied (supported by all methods)
+2. If no *name* supplied use **repoid** where that is applicable.
+3. Otherwise use the *key* name (*id*) from ``repo.config``
+
 
 - GIT
 
@@ -127,16 +146,6 @@ Current methods supported
 
       **uri**
 
-- COMMAND
-
-  Fallback command execution. If no handlers of required type is defined or
-  feasible, then define a command which will then be executed to fetch the data.
-
-    - type: *exec*
-    - required arguments:
-
-      **exec**: *Command to be executed verbatim. It is assumed the script is never runned as a web service etc!*
-
 
 test
 ----
@@ -149,7 +158,7 @@ any more is unpresented from the consumer.
 *Default configuration files*
 
 :Repository file:
-  repofile.test
+  [<dist>/]test.config
 
 :Generic file:
   config
@@ -175,8 +184,8 @@ the test configuration will lead to the removal of any corresponding link in the
 
 
 :Repository files:
-  repofile.prod
-  repofile.test
+  [<dist>/]prod.config
+  [<dist>/]test.config
 
 :Generic file:
   config
@@ -205,7 +214,9 @@ repoadmin.sh
 ------------
 
 This Bash script is a convenience wrapper around the main Perl script. It is ment for cron jobs or manual administration thee routine tasks. The script has routines
-for initializing the system and calling the main script with default values for all normal procedures.
+for initializing the system and calling the main script with default values for all normal procedures. If no `test` or `prod` configuration found in root configuration,
+directory, all sub directories will be searched instead, and *repo.pl* run once
+for each which contains valid configuration.
 
 Commands
 ''''''''
@@ -232,7 +243,8 @@ snapshot_cleanup.sh
 A utility script which is for purging unused snapshots and repositories. If
 older snapshots are not required anymore, then they may be purged by executing
 this script. Additionally it may be used to remove any traces of repositories
-not used; that is both the mirror and all snapshots of it.
+not used; that is both the mirror and all snapshots of it. In the latter case an
+archive will be made of the last snapshot of this repository.
 
 commands
 ''''''''
@@ -240,7 +252,7 @@ commands
 */usr/local/sbin/snapshot_cleanup.sh [-uhd] [ [-t <timestamp>] | [-r <repository name>] ]*
 
  -t : Expunge all snapshots (of all mirrors) taken before this timestamp
-      If no date provided then remove all snapshots older than oldest date used in `prod.conf`
+      If no date provided then remove all snapshots older than oldest date used in `prod.config`
 
  -r : Purge named repository completely
       Removes mirror and every snapshot of this repository (only) which exists on server

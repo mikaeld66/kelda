@@ -12,7 +12,7 @@
 shopt -s extglob
 
 # get location of script
-BASEDIR=$(dirname $0)
+BASEDIR=$(dirname "$(readlink -f "$0")")
 
 # default system wide configuration lays beneath this
 CONFDIR=/etc/kelda
@@ -51,6 +51,9 @@ Usage:
    NB: either a configuration environment (under $CONFDIR) must be provided using the '-e' flag or there
        must exist local configuration ('config' and if necessary repofiles) in the current directory!
 
+   For a distribution specific repository service locate the prod-, test- and yu.repos.d-files/directories in
+   subdirectories. All repositories synced etc. will then be placed into subdir with same name on server.
+
 EOF
 
 }
@@ -64,7 +67,7 @@ while getopts ":he:d" opt; do
     case $opt in
 
         e)
-            environment=$CONFDIR/$OPTARG
+            environment=$CONFDIR/$OPTARG/conf
             ;;
         d)
             debug="-d"
@@ -154,7 +157,18 @@ setup()
     mode=$1
     shift
     if [ $# -gt 0 ]; then configopt="-c $1"; fi
-    $BASEDIR/repo.pl $debug $configopt $mode
+    # if any test.conf and prod.conf in conf root use that, otherwise search sub directories
+    if [ -f $environment/test.conf -a -f $environment/prod.conf ]; then
+        $BASEDIR/repo.pl $debug $configopt $mode
+    else
+        pushd $environment >/dev/null
+        for dir in $(ls -d */); do
+            if [ -f $dir/test.config -a -f $dir/prod.config ]; then
+                $BASEDIR/repo.pl $debug $configopt -p $dir/prod.config -t $dir/test.config -D $dir $mode
+            fi
+        done
+        popd >/dev/null
+    fi
 }
 
 

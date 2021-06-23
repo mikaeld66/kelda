@@ -19,7 +19,8 @@ use Test::YAML::Valid;
 use YAML::Tiny;
 use Getopt::Long::Descriptive;
 use File::Basename;
-use File::Temp qw(tempfile);
+use File::Temp qw(tempfile tempdir);
+use File::Path qw(rmtree);
 use Digest::MD5 qw(md5_hex);
 use Data::Dumper;
 
@@ -28,9 +29,11 @@ Readonly my $TRUE  => 1;
 
 my $DEBUG        = $FALSE;
 my $DEVDEBUG     = $FALSE;                      # development debug: set this to $TRUE to just write what should otherwise be done
-my $CONFIGDIR    = "/etc/kelda/";               # default top level system-wide configuration directory
+my $CONFIGDIR    = "/etc/kelda/conf";           # default top level system-wide configuration directory
 my $REPODIR      = "repo";
 my $SNAPSHOTSDIR = "snapshots";
+my $DIST         = '';                          # used if test/prod should be set up with distribution specific subdirectories
+my $POSTCMD_DIR  = '/root/postcmd';             # location of post commands/scripts
 my $rootdir;                                    # top level local repository directory
 my $command;                                    # command for script
 my $opt;                                        # for argument and options handling
@@ -193,6 +196,7 @@ sub usage  {
     [ 'configdir|c=s',    "Configuration directory (if not provided expected locally)" ],
     [ 'testrepofile|t=s', "Repoconfiguration for local test repository" ],
     [ 'prodrepofile|p=s', "Repoconfiguration for local production repository" ],
+    [ 'dist|D=s',         "distribution (used for dist specific subdirectories)" ],
     [ 'help|h',           "Usage help" ],
     [ 'debug|d',          "Debug mode (print more information)" ],
 );
@@ -218,6 +222,7 @@ my $REPOCONFIG   = "$CONFIGDIR/repo.config";                # default main repo 
 
 $modeconfig{"test"}{"config"} = ( $opt->testrepofile ? $opt->testrepofile : $CONFIGDIR . $modeconfig{"test"}{"config"} );
 $modeconfig{"prod"}{"config"} = ( $opt->prodrepofile ? $opt->prodrepofile : $CONFIGDIR . $modeconfig{"prod"}{"config"} );
+if ( $opt->dist )  { $DIST = $opt->dist; }
 
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
@@ -234,6 +239,8 @@ sub sync  {
     my @ids = defined $_[0] ? @_ : () ;                     # specific repo(s) to fetch or all?
     my $repoyaml;                                           # content of main repo configuration file ('repofile')
     my $cfgyaml;                                            # generic configuration
+    my $postcmd;
+    my $dist_support;                                       # distribution sub directories or not
 
     # read configuration ("profile")
     if($DEVDEBUG)  {
@@ -247,6 +254,8 @@ sub sync  {
     $rootdir = abs_path( $cfgyaml->[0]{'repodir'} );
     reporoot("$rootdir/$REPODIR");
 
+    $dist_support = ( $cfgyaml->[0]{'repodir'}['dist_support'] ? $cfgyaml->[0]{'repodir'}['dist_support'] : 'true' );
+
     # For each id:
     #   - ensure repo subdirectory exists
     #   - call relevant handler
@@ -254,14 +263,37 @@ sub sync  {
     if( ! ( @ids ) )  { @ids = keys %{ $repoyaml->[0] }; }  # if no ids provided use all from configuration
     for my $id ( @ids )  {
         my $type = $repoyaml->[0]{$id}{'type'};             # for simplification of code
+        my ( $dist, $repocreated, $reponame );
 
         if($type)  {                                        # sanity check: all repo handlers must have type defined
-            my $repocreated = reporoot( "$rootdir/$REPODIR/$id" );
+            # if distribution specific support enabled find current dist, otherwise set empty
+            # to get the 'repo' sync'ed to reporoot
+            if("$dist_support" eq "true")  {
+                $dist = defined $repoyaml->[0]{$id}{'dist'} ? $repoyaml->[0]{$id}{'dist'} : 'generic';
+            } else  { $dist = ''; }
+
+            # if 'name' provided use that, otherwise use 'repoid' if that exists, otherwise use 'id' (always exists)
+            $reponame = defined $repoyaml->[0]{$id}{'repoid'} ? $repoyaml->[0]{$id}{'repoid'} : $id;
+            $reponame = defined $repoyaml->[0]{$id}{'name'} ? $repoyaml->[0]{$id}{'name'} : $reponame;
+            $repocreated = reporoot( "$rootdir/$REPODIR/$dist/$reponame" );
             if(defined &{$type})  {                         # check if appropriate handler routine is defined
-                $type->( "$rootdir/$REPODIR", $id, $repoyaml->[0]{$id} );
+                $postcmd = $repoyaml->[0]{$id}{'postcmd'};  # post command to execute after sync is finished
+                $type->( "$rootdir/$REPODIR/$dist", $id, $repoyaml->[0]{$id}, $reponame );
+                # run post command if any defined
+                if($postcmd)  {
+                    # for safety reasons we only accept scripts or commands located into a predetermined location,
+                    # which should be somewhere in root home directory
+                    $postcmd = basename($postcmd);          # get filename of command/script
+                    if ( -x "$POSTCMD_DIR/$postcmd" )  {    # make sure we only look into our pre defined directory
+                                                            # and that it is marked executable
+                        system("$POSTCMD_DIR/$postcmd");
+                    } else  { info("postcmd does not exist, is not accessible or is not set executable : $POSTCMD_DIR/$postcmd\n"); }
+                }
             } else  {
                 error("Handler for type --> $type <-- does not exist. Skipping...");
             }
+        } else  {
+            error("No type specified for --> $id <-- - do not know which handler to call...");
         }
     }
     return 0;
@@ -296,7 +328,11 @@ sub test  {
     $testdir = "$rootdir/$modeconfig{\"$mode\"}{'dir'}";
     $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
     reporoot( "$testdir" );
-    clean_symlinks( "$testdir" );
+    if ( ! -d "$testdir/$DIST" )  {
+        mkdir "$testdir/$DIST";
+    } else  {
+        clean_symlinks( "$testdir/$DIST" );
+    }
 
     @links = sort { $b cmp $a } @repoconfig;
     foreach my $link ( @links )  {
@@ -306,12 +342,12 @@ sub test  {
         chomp $repo if $repo;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEVDEBUG)  {
-                info( "Linking $testdir/$repo from $snapshotdir/$source/$repo" );
+                info( "Linking $testdir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
             } else  {
-                if( -d "$snapshotdir/$source/$repo" )  {
-                    symlink "$snapshotdir/$source/$repo", "$testdir/$repo" || error("Could not make link for repo $repo");
+                if( -d "$snapshotdir/$source/$DIST/$repo" )  {
+                    symlink "$snapshotdir/$source/$DIST/$repo", "$testdir/$DIST/$repo" || error("Could not make link for repo $repo");
                 } else  {
-                    error(" Source directory for $repo does not exist ($snapshotdir/$source/$repo) - skipping");
+                    error(" Source directory for $repo does not exist ($snapshotdir/$source/$DIST/$repo) - skipping");
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -330,7 +366,7 @@ sub prod  {
     my $cfgyaml;                                            # generic configuration
     my %oldrepo;
     my @links;
-    my $rootdir;
+    my ( $rootdir, $proddir, $snapshotdir );
 
     if( ! -e $modeconfig{'test'}{'config'} )  {
         error( "'prod' command but no test configuration available!" );
@@ -355,9 +391,14 @@ sub prod  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    reporoot( "$rootdir/$modeconfig{'prod'}{'dir'}" );
-    clean_symlinks( "$rootdir/$modeconfig{'prod'}{'dir'}" );
-
+    $proddir = "$rootdir/$modeconfig{'prod'}{'dir'}";
+    $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
+    reporoot( "$proddir" );
+    if ( ! -d "$proddir/$DIST" )  {
+        mkdir "$proddir/$DIST";
+    } else  {
+        clean_symlinks( "$proddir/$DIST" );
+    }
 
     @links = sort { $b cmp $a } @prodconfig;
     foreach my $link ( @links )  {
@@ -374,12 +415,12 @@ sub prod  {
                 next;
             }
             if( $DEVDEBUG )  {
-                info( "Linking $rootdir/$modeconfig{'prod'}{'dir'}/$repo from $rootdir/$SNAPSHOTSDIR/$source/$repo" );
+                info( "Linking $proddir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
             } else  {
-                if( -d "$rootdir/$SNAPSHOTSDIR/$source/$repo" )  {
-                    symlink "$rootdir/$SNAPSHOTSDIR/$source/$repo", "$rootdir/$modeconfig{'prod'}{'dir'}/$repo" || error( "Could not make link for repo $repo" );
+                if( -d "$snapshotdir/$source/$DIST/$repo" )  {
+                    symlink "$snapshotdir/$source/$DIST/$repo", "$proddir/$DIST/$repo" || error( "Could not make link for repo $repo" );
                 } else  {
-                    error( "Source directory for $repo does not exist ($rootdir/$SNAPSHOTSDIR/$source/$repo) - skipping" );
+                    error( "Source directory for $repo does not exist ($snapshotdir/$source/$DIST/$repo) - skipping" );
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
@@ -400,24 +441,24 @@ sub prod  {
 #   (this directory can be assumed exists and be in absolute form)
 # - the 'id' (name of local repository as named in the repofile)
 # - a hash of all values provided in the file for the named repository
+# - the name of the local repository
 #
-# The local directory has the name "$rootdir/<id>" (where $rootdir is global) and
-# can be assumed already exists.
+# The local directory has the name "$rootdir/<4th argument>" and can be assumed already exists.
 #
 
 # Mirroring YUM repositories
 sub yum {
-    my ($rootdir, $id, $repoinfo) = @_;
+    my ($rootdir, $id, $repoinfo, $reponame) = @_;
     my $reposdir = $repoinfo->{'reposdir'};
     my $repoid   = $repoinfo->{'repoid'};
     my $gpgkey   = $repoinfo->{'gpgkey'};
+    my $dist     = ( $repoinfo->{'dist'} ? $repoinfo->{'dist'} : "generic" );
     my $groupcmd = '';
-    my ( $fh, $yumtmp, @yumconf );
+    my ( $fh, $yumtmp, @yumconf, $yumcachetmp );
     my $ret;
 
     my $yumconftmpl = << 'TMPL_END';
 [main]
-cachedir=/var/cache/yum/$basearch/$releasever
 keepcache=0
 debuglevel=0
 logfile=/var/log/yum.log
@@ -429,34 +470,36 @@ installonly_limit=3
 reposdir=[%REPOSDIR%]
 TMPL_END
 
-    if( ! $reposdir )  { $reposdir = "$CONFIGDIR/yum.repos.d"; }
+    $reposdir = ( $reposdir ? "$CONFIGDIR/$reposdir" : "$CONFIGDIR/$dist/yum.repos.d" );
 
     if( $repoid )  {
-        # generate yum configurstion
+        # generate yum configuration
         ($fh, $yumtmp) = tempfile( "yumXXXX", SUFFIX => '.conf', DIR => '/tmp' );
         @yumconf = $yumconftmpl =~ s/\[%REPOSDIR%\]/$reposdir/r;
         print( $fh @yumconf);
         close $fh;
 
-        chdir( "$rootdir/$id" );
+        chdir( "$rootdir/$reponame" );
+        $yumcachetmp = tempdir( "yumcacheXXXX" );
         if($DEBUG)  {
             info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
-            $ret = run_systemcmd( 'reposync', "-dc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+            $ret = run_systemcmd( 'reposync', "-e $yumcachetmp", "-dc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$reponame" );
         } else  {
-            $ret = run_systemcmd( 'reposync', "-qdc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$id" );
+            $ret = run_systemcmd( 'reposync', "-e $yumcachetmp", "-qdc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$reponame" );
         }
+        rmtree( $yumcachetmp, { safe => 1 }, );
         if( $ret == 0 )  {
             # test if any group definition file is present
-            $groupcmd = "-g $rootdir/$id/comps.xml" if -e "$rootdir/$id/comps.xml";
+            $groupcmd = "-g $rootdir/$reponame/comps.xml" if -e "$rootdir/$reponame/comps.xml";
             if($DEBUG)  {
-                info("Running createrepo_c -v(q) $groupcmd $rootdir/$id/" );
-                run_systemcmd( 'createrepo_c', '-v', $groupcmd, " $rootdir/$id/" );
+                info("Running createrepo_c -v(q) $groupcmd $rootdir/$reponame/" );
+                run_systemcmd( 'createrepo_c', '-v', $groupcmd, " $rootdir/$reponame/" );
             } else  {
-                run_systemcmd( 'createrepo_c', '-q', $groupcmd, " $rootdir/$id/" );
+                run_systemcmd( 'createrepo_c', '-q', $groupcmd, " $rootdir/$reponame/" );
             }
             if( $ret == 0 and $gpgkey )  {
                 my $cwd = cwd();
-                chdir("$rootdir/$id");
+                chdir("$rootdir/$reponame");
                 my @gpgkeys = split '<', $gpgkey;
                 foreach (@gpgkeys)  {
                     if( $DEBUG )  {
@@ -486,15 +529,16 @@ sub git {
     my $rootdir = $_[0];
     my $id      = $_[1];
     my $uri     = $_[2]->{'uri'};
-    my $new     = is_folder_empty( "$rootdir/$id" );
+    my $name    = $_[3];
+    my $new     = is_folder_empty( "$rootdir/$name" );
     my $cmd;
 
     info("Getting GIT repository (id: $id) from $uri...") if( $DEBUG );
     if($new)  {
         chdir("$rootdir");
-        run_systemcmd('git', "clone", "$uri", "$id");
+        run_systemcmd('git', "clone", "$uri", "$name");
     } else  {
-        chdir("$rootdir/$id");
+        chdir("$rootdir/$name");
         run_systemcmd('git', 'pull');
     }
     return 0;
@@ -535,11 +579,12 @@ sub file {
     my $id      = $_[1];
     my $uri     = $_[2]->{'uri'};
     my $chksum  = $_[2]->{'checksum'};
+    my $name    = $_[3];
     my $filename;
 
     if($uri)  {
         ($filename) = fileparse($uri);
-        chdir("$rootdir/$id");
+        chdir("$rootdir/$name");
         info("Getting file $uri (id: $id)...") if($DEBUG);
         if( md5sum( $filename, $chksum ) )  {                   # checksum provided -> verify if file already in place
             info("No file with provided name and checksum exists, or no checksum provided -> fetching file...") if( $DEBUG );
@@ -561,10 +606,11 @@ sub rsync {
     my $rootdir = $_[0];
     my $id      = $_[1];
     my $uri     = $_[2]->{'uri'};
+    my $name    = $_[3];
 
     if($uri)  {
         info("Syncronizing from $uri (id: $id)...") if( $DEBUG );
-        chdir( "$rootdir/$id" );
+        chdir( "$rootdir/$name" );
         run_systemcmd('rsync', '-aq', '--delete', "$uri", "$rootdir/$id");
     } else  {
         info("No URI given as rsync source, skipping!\n");
@@ -577,12 +623,12 @@ sub rsync {
 # For now we assume this script is only run manually and thus everything it is
 # tasked to do the "user" is also permitted to do him/herself
 sub execute {
-    my ($rootdir, $id, $cmd) = @_;
+    my ($rootdir, $id, $cmd, $name) = @_;
     $cmd = $cmd->{'exec'};
 
     if( $cmd )  {
         info("Executing command $cmd (id: $id)...") if( $DEBUG );
-        chdir( "$rootdir/$id" );
+        chdir( "$rootdir/$name" );
         run_systemcmd( "$cmd");
     } else  {
         info( "No command provided for id=$id, skipping...");

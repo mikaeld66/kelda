@@ -22,6 +22,7 @@ readonly EXIT_TIMESTAMPTOONEW=1
 readonly EXIT_USERREQUEST=2
 readonly EXIT_TIMESTAMPERROR=3
 readonly EXIT_INVALIDOPTION=4
+readonly EXIT_FULLDISK=5
 
 readonly BASEDIR=/var/www/html
 readonly ARCHIVEDIR=${BASEDIR}/archive
@@ -131,6 +132,10 @@ if [ "${purge_repo}x" != "x" ]; then
     else
         mkdir -p ${ARCHIVEDIR}/${purge_repo}/$newest_dir
         rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/
+        if [ ! $? ]; then
+            echo 'Archival of repository failed. Full disk?'
+            exit $EXIT_FULLDISK
+        fi
     fi
     # 2. remove the mirror itself
     if [ -n "$dryrun" ]; then
