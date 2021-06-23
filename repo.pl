@@ -254,7 +254,7 @@ sub sync  {
     $rootdir = abs_path( $cfgyaml->[0]{'repodir'} );
     reporoot("$rootdir/$REPODIR");
 
-    $dist_support = ( $cfgyaml->[0]{'repodir'}['dist_support'] ? $cfgyaml->[0]{'repodir'}['dist_support'] : 'true' );
+    $dist_support = ( $cfgyaml->[0]{'dist_support'} ? $cfgyaml->[0]{'dist_support'} : 'true' );
 
     # For each id:
     #   - ensure repo subdirectory exists
