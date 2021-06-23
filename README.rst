@@ -86,6 +86,17 @@ All methods support the **dist** option. This decides which architecture the
 repository is meant for, and thus the subdirectory to mirror under. Default is
 ``generic``.
 
+Name of repository
+^^^^^^^^^^^^^^^^^^
+
+Repositories synced will be placed into a sub directory, which name is derived
+from this rule set:
+
+1. The argument **name** if this is supplied (supported by all methods)
+2. If no *name* supplied use **repoid** where that is applicable.
+3. Otherwise use the *key* name (*id*) from ``repo.config``
+
+
 - GIT
 
   Checkout of a normal git repository. No facilitation for authentication is
@@ -147,7 +158,7 @@ any more is unpresented from the consumer.
 *Default configuration files*
 
 :Repository file:
-  test.conf
+  [<dist>/]test.conf
 
 :Generic file:
   config
@@ -173,8 +184,8 @@ the test configuration will lead to the removal of any corresponding link in the
 
 
 :Repository files:
-  prod.conf
-  test.conf
+  [<dist>/]prod.conf
+  [<dist>/]test.conf
 
 :Generic file:
   config

@@ -161,13 +161,13 @@ setup()
     if [ -f $environment/test.conf -a -f $environment/prod.conf ]; then
         $BASEDIR/repo.pl $debug $configopt $mode
     else
-        pushd $environment
+        pushd $environment >/dev/null
         for dir in $(ls -d */); do
-            if [ -f $dir/test.conf -a -f $dir/prod.conf ]; then
-                $BASEDIR/repo.pl $debug $configopt -p $dir/prod.conf -t $dir/test.conf -D $dir $mode
+            if [ -f $dir/test.config -a -f $dir/prod.config ]; then
+                $BASEDIR/repo.pl $debug $configopt -p $dir/prod.config -t $dir/test.config -D $dir $mode
             fi
         done
-        popd
+        popd >/dev/null
     fi
 }
 
