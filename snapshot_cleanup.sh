@@ -28,7 +28,7 @@ readonly BASEDIR=/var/www/html
 readonly ARCHIVEDIR=${BASEDIR}/archive
 readonly WEBDIR=${BASEDIR}/uh-iaas
 readonly SNAPSHOTDIR=${WEBDIR}/snapshots
-readonly KELDACONFDIR=/etc/kelda/prod
+readonly KELDACONFDIR=/etc/kelda/prod/conf
 
 # Counter
 removed=0
@@ -44,8 +44,8 @@ usage()
     echo "   -d: dryrun - just print what would otherwise be deleted"
     echo "   -t: delete all snapshots older than timestamp provided"
     echo "       <timestamp> = YYYY-MM-DD-HHMM (kelda config format)"
-    echo "   -r: remove named repository completely (incl. all snapshots taken"
-    echo "       <repository name> = directory name under 'repo'"
+    echo "   -r: remove named repository completely (incl. all snapshots taken)"
+    echo "       <repository name> = directory name under 'repo' - NB: ALL repoes named like this are purged, regardless of distribution!"
     echo "       Latest snapshot is archived"
     echo
     echo "NB: '-r' and '-t' are mutually exclusive"
@@ -112,6 +112,14 @@ fi
 
 # if purging repo then do that now and then exit
 if [ "${purge_repo}x" != "x" ]; then
+
+    # ensure no relative components included (potentially pointing to directories higher up)
+    if [[ ${purge_repo} =~ ".." || ${purge_repo} =~ "/" ]]; then
+        echo "Path components (.. /) not allowed!"
+        echo "Please enter a repository name only"
+        exit $EXIT_USERREQUEST
+    fi
+
     echo "Removing the $purge_repo repository incl. snapshots..."
     echo "Most recent snapshot saved in archive"
     read -p "Proceed? " -n 1 -r
@@ -122,13 +130,14 @@ if [ "${purge_repo}x" != "x" ]; then
     fi
 
     # Got 'go ahead'
+
     # 1. archive most recent snapshot
-    newest_dir=$(ls -dt ${SNAPSHOTDIR}/*/$purge_repo | head -1)     # find latest snapshot containing the repository under process
+    cd ${SNAPSHOTDIR}
+    newest_dir=$(ls -1dt */*/$purge_repo | sort -nr | head -1 )     # find latest snapshot containing the repository under process
     newest_dir=${newest_dir%/*}                                     # extract the time stamped directory name
-    newest_dir=${newest_dir##*/}
 
     if [ -n "$dryrun" ]; then
-        echo "Would run: mkdir -p ${ARCHIVEDIR}/${purge_repo}/$newest_di; rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/"
+        echo "Would run: mkdir -p ${ARCHIVEDIR}/${purge_repo}/$newest_dir; rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/"
     else
         mkdir -p ${ARCHIVEDIR}/${purge_repo}/$newest_dir
         rsync -a ${SNAPSHOTDIR}/${newest_dir}/$purge_repo/ ${ARCHIVEDIR}/${purge_repo}/${newest_dir}/
@@ -137,22 +146,26 @@ if [ "${purge_repo}x" != "x" ]; then
             exit $EXIT_FULLDISK
         fi
     fi
+
     # 2. remove the mirror itself
     if [ -n "$dryrun" ]; then
-        echo "Would run: rm -rf ${WEBDIR}/repo/${purge_repo}"
+        [ -d ${WEBDIR}/repo/*/${purge_repo} ] && echo "Would run: rm -rf ${WEBDIR}/repo/*/${purge_repo}"
     else
-        [ -d "${WEBDIR}/repo/${purge_repo}" ] && rm -rf ${WEBDIR}/repo/${purge_repo}
+        [ -d ${WEBDIR}/repo/*/${purge_repo} ] && rm -rf ${WEBDIR}/repo/*/${purge_repo}
     fi
+
     # 3. find and remove all snapshots of it
     if [ -n "$dryrun" ]; then
-        find ${SNAPSHOTDIR} -maxdepth 2 -type d -name ${purge_repo} -exec echo "Would run: rm -rf {}" \;
+        find ${SNAPSHOTDIR} -maxdepth 3 -type d -name ${purge_repo} -exec echo "Would run: rm -rf {}" \;
     else
-        find ${SNAPSHOTDIR} -maxdepth 2 -type d -name ${purge_repo} -exec rm -rf {} \;
+        find ${SNAPSHOTDIR} -maxdepth 3 -type d -name ${purge_repo} -exec rm -rf {} \;
     fi
     # Finished; exit so we don't attempt snapshot cleaning as well
     exit
 fi
 
+echo "At the time being only explicit repo purging is available (-r)"
+exit
 # otherwise the order of the day is purging of old snapshots
 
 # If any user provided timestamp convert it to EPOCH seconds
