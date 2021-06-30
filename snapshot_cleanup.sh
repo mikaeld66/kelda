@@ -164,8 +164,6 @@ if [ "${purge_repo}x" != "x" ]; then
     exit
 fi
 
-echo "At the time being only explicit repo purging is available (-r)"
-exit
 # otherwise the order of the day is purging of old snapshots
 
 # If any user provided timestamp convert it to EPOCH seconds
@@ -179,9 +177,9 @@ if [[ -n $userseconds ]]; then
 fi
 
 # Find oldest snapshot still in use
-prodseconds=$(sort ${KELDACONFDIR}/prod.config | head -1 | cut -d/ -f1)
+prodseconds=$(sort ${KELDACONFDIR}/*/prod.config | head -1 | cut -d/ -f1)
 prodseconds=$(timestamp2seconds $prodseconds)
-testseconds=$(sort ${KELDACONFDIR}/test.config | head -1 | cut -d/ -f1)
+testseconds=$(sort ${KELDACONFDIR}/*/test.config | head -1 | cut -d/ -f1)
 testseconds=$(timestamp2seconds $testseconds)
 
 oldestseconds="$(( prodseconds <= testseconds ? prodseconds : testseconds ))"
