@@ -504,9 +504,9 @@ TMPL_END
                 foreach (@gpgkeys)  {
                     if( $DEBUG )  {
                         info("Retrieving gpg key from $_ using curl");
-                        run_systemcmd('curl', "$_", "-vO");
+                        run_systemcmd('curl', "$_", "-vLO");
                     } else  {
-                        run_systemcmd('curl', "$_", "-sO");
+                        run_systemcmd('curl', "$_", "-sLO");
                     }
                     info ("Importing gpg key $_ using 'rpm --import'") if ( $DEBUG );
                     run_systemcmd('rpm', '--import', "$_");
