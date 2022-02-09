@@ -178,9 +178,15 @@ fi
 
 # Find oldest snapshot still in use
 prodseconds=$(sort ${KELDACONFDIR}/*/prod.config | sed '/^[[:space:]]*$/d' | head -1 | cut -d/ -f1)
+p=$prodseconds
 prodseconds=$(timestamp2seconds $prodseconds)
 testseconds=$(sort ${KELDACONFDIR}/*/test.config | sed '/^[[:space:]]*$/d' | head -1 | cut -d/ -f1)
+t=$testseconds
 testseconds=$(timestamp2seconds $testseconds)
+if [ -z "${prodseconds}" -o -z "${testseconds}" ]; then
+    echo "Exiting due to invalid date found: $p (prod) - $t (test)"
+    exit $EXIT_TIMESTAMPERROR
+fi
 
 oldestseconds="$(( prodseconds <= testseconds ? prodseconds : testseconds ))"
 
