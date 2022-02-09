@@ -177,9 +177,9 @@ if [[ -n $userseconds ]]; then
 fi
 
 # Find oldest snapshot still in use
-prodseconds=$(sort ${KELDACONFDIR}/*/prod.config | head -1 | cut -d/ -f1)
+prodseconds=$(sort ${KELDACONFDIR}/*/prod.config | sed '/^[[:space:]]*$/d' | head -1 | cut -d/ -f1)
 prodseconds=$(timestamp2seconds $prodseconds)
-testseconds=$(sort ${KELDACONFDIR}/*/test.config | head -1 | cut -d/ -f1)
+testseconds=$(sort ${KELDACONFDIR}/*/test.config | sed '/^[[:space:]]*$/d' | head -1 | cut -d/ -f1)
 testseconds=$(timestamp2seconds $testseconds)
 
 oldestseconds="$(( prodseconds <= testseconds ? prodseconds : testseconds ))"
