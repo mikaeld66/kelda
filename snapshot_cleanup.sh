@@ -26,7 +26,7 @@ readonly EXIT_FULLDISK=5
 
 readonly BASEDIR=/var/www/html
 readonly ARCHIVEDIR=${BASEDIR}/archive
-readonly WEBDIR=${BASEDIR}/uh-iaas
+readonly WEBDIR=${BASEDIR}/nrec
 readonly SNAPSHOTDIR=${WEBDIR}/snapshots
 readonly KELDACONFDIR=/etc/kelda/prod/conf
 
