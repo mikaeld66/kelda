@@ -15,7 +15,6 @@ no strict 'refs';                               # to make indirect references to
 use Readonly;                                   # for the "constants"
 use Cwd;
 use Cwd 'abs_path';
-use Test::YAML::Valid;
 use YAML::Tiny;
 use Getopt::Long::Descriptive;
 use File::Basename;
@@ -23,6 +22,7 @@ use File::Temp qw(tempfile tempdir);
 use File::Path qw(rmtree);
 use Digest::MD5 qw(md5_hex);
 use Data::Dumper;
+use Switch;
 
 Readonly my $FALSE => 0;
 Readonly my $TRUE  => 1;
@@ -226,11 +226,11 @@ if ( $opt->dist )  { $DIST = $opt->dist; }
 
 # delegate work according to command
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
-given( $command )  {
-    when( 'sync' )  { shift; sync(@ARGV); }
-    when( 'test' )  { test('test'); }
-    when( 'prod' )  { prod(); }
-    default         { print "\nUnknown command!\n"; usage(); }
+switch( $command )  {
+    case 'sync'  { shift; sync(@ARGV); }
+    case 'test'  { test('test'); }
+    case 'prod'  { prod(); }
+    else         { print "\nUnknown command!\n"; usage(); }
 };
 
 
@@ -243,12 +243,12 @@ sub sync  {
     my $dist_support;                                       # distribution sub directories or not
 
     # read configuration ("profile")
-    if($DEVDEBUG)  {
-        yaml_file_ok("$REPOCONFIG", "$REPOCONFIG is a valid YAML file\n");
-    }
-
-    $repoyaml = YAML::Tiny->read( "$REPOCONFIG" );
-    $cfgyaml  = YAML::Tiny->read( "$CONFIG" );
+    eval  { $repoyaml = YAML::Tiny->read( "$REPOCONFIG" );  }
+    or do  {
+        print "$REPOCONFIG is not a valid YAML file! \n";
+        exit 1;
+    };
+    $cfgyaml = YAML::Tiny->read( "$CONFIG" ); 
 
     # Ensure existence of root repositiory directory
     $rootdir = abs_path( $cfgyaml->[0]{'repodir'} );
@@ -449,12 +449,13 @@ sub prod  {
 # Mirroring YUM repositories
 sub yum {
     my ($rootdir, $id, $repoinfo, $reponame) = @_;
-    my $reposdir = $repoinfo->{'reposdir'};
-    my $repoid   = $repoinfo->{'repoid'};
-    my $gpgkey   = $repoinfo->{'gpgkey'};
-    my $dist     = ( $repoinfo->{'dist'} ? $repoinfo->{'dist'} : "generic" );
-    my $groupcmd = '';
-    my ( $fh, $yumtmp, @yumconf, $yumcachetmp );
+    my $reposdir 	= $repoinfo->{'reposdir'};
+    my $repoid   	= $repoinfo->{'repoid'};
+    my $gpgkey   	= $repoinfo->{'gpgkey'};
+    my $dist     	= ( $repoinfo->{'dist'} ? $repoinfo->{'dist'} : "generic" );
+    my $groupcmd 	= '';
+    my $verbosity_arg 	= '-q';				# default quiet
+    my ( $fh, $yumtmp, @yumconf );
     my $ret;
 
     my $yumconftmpl = << 'TMPL_END';
@@ -480,23 +481,21 @@ TMPL_END
         close $fh;
 
         chdir( "$rootdir/$reponame" );
-        $yumcachetmp = tempdir( "yumcacheXXXX" );
         if($DEBUG)  {
             info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
-            $ret = run_systemcmd( 'reposync', "-e $yumcachetmp", "-dc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$reponame" );
-        } else  {
-            $ret = run_systemcmd( 'reposync', "-e $yumcachetmp", "-qdc $yumtmp", '--norepopath', '--download-metadata', '--downloadcomps', "-r $repoid", "-p $rootdir/$reponame" );
+	    $verbosity_arg = "-v";
         }
-        rmtree( $yumcachetmp, { safe => 1 }, );
+        $ret = run_systemcmd( 'reposync', $verbosity_arg, "--delete", "-c $yumtmp", '--norepopath', '--download-metadata', "--repoid=$repoid", "-p $rootdir/$reponame" );
+
+	# createrepo is not really necessary for EL8 / 9, but will not hurt either, so do it for all RPM based repository mirrors
         if( $ret == 0 )  {
             # test if any group definition file is present
             $groupcmd = "-g $rootdir/$reponame/comps.xml" if -e "$rootdir/$reponame/comps.xml";
             if($DEBUG)  {
                 info("Running createrepo_c -v(q) $groupcmd $rootdir/$reponame/" );
-                run_systemcmd( 'createrepo_c', '-v', $groupcmd, " $rootdir/$reponame/" );
-            } else  {
-                run_systemcmd( 'createrepo_c', '-q', $groupcmd, " $rootdir/$reponame/" );
+	        $verbosity_arg = "-v";
             }
+            run_systemcmd( 'createrepo_c', $verbosity_arg, $groupcmd, " $rootdir/$reponame/" );
             if( $ret == 0 and $gpgkey )  {
                 my $cwd = cwd();
                 chdir("$rootdir/$reponame");
