@@ -248,7 +248,7 @@ sub sync  {
         print "$REPOCONFIG is not a valid YAML file! \n";
         exit 1;
     };
-    $cfgyaml = YAML::Tiny->read( "$CONFIG" ); 
+    $cfgyaml = YAML::Tiny->read( "$CONFIG" );
 
     # Ensure existence of root repositiory directory
     $rootdir = abs_path( $cfgyaml->[0]{'repodir'} );
@@ -483,17 +483,49 @@ TMPL_END
         chdir( "$rootdir/$reponame" );
         if($DEBUG)  {
             info( "Syncing YUM repository using $yumtmp as 'yum.conf' and $reposdir as repofiledirectory (id: $id)..." );
-	    $verbosity_arg = "-v";
+            $verbosity_arg = "-v";
         }
         $ret = run_systemcmd( 'reposync', $verbosity_arg, "--delete", "-c $yumtmp", '--norepopath', '--download-metadata', "--repoid=$repoid", "-p $rootdir/$reponame" );
 
-	# createrepo is not really necessary for EL8 / 9, but will not hurt either, so do it for all RPM based repository mirrors
+        # In case of kickstart style repositories, we will also need a [.]treeinfo file if any provided upstream. Those are not fetched by reposync
+        if( $repoinfo->{'ksrepo'} && $ret == 0 )  {
+            my @baseurl    =  grep(/url/, `dnf repoinfo --setopt=reposdir=$reposdir $repoid 2>/dev/null`);
+            $baseurl[0] =~ s/^.*: *(http.*)$/$1.treeinfo/;
+            if( $DEBUG )  {
+                info("Attempt to retrieve a .treeinfo file if available by running:");
+                info("curl $verbosity_arg -fLO @baseurl");
+                $verbosity_arg = "-v";
+            } else  {
+                $verbosity_arg = "-s";
+            }
+            # Do like this to get back afterwards
+            {
+                chdir("$rootdir/$reponame");
+                $ret = run_systemcmd('curl', $verbosity_arg, "-fLO", "@baseurl");
+                if( $ret )  {
+                    $baseurl[0] =~ s/\.treeinfo/treeinfo/;
+                    if( $DEBUG )  {
+                        info("Could not find '.treeinfo', will check for 'treeinfo' like this:");
+                        info("curl $verbosity_arg -fLO @baseurl");
+                    }
+                    $ret = run_systemcmd('curl', $verbosity_arg, "-fLO", "@baseurl");
+                    if( $ret )  {
+                        info("Found neither '.treeinfo'nor 'treeinfo'. Will continue nevertheless.");
+                        $ret = 0;                       # Reset since an error here is not fatal
+                    }
+                }
+            }
+        }
+
+        # createrepo is not really necessary for EL8 / 9, but will not hurt either, so do it for all RPM based repository mirrors
         if( $ret == 0 )  {
             # test if any group definition file is present
             $groupcmd = "-g $rootdir/$reponame/comps.xml" if -e "$rootdir/$reponame/comps.xml";
             if($DEBUG)  {
                 info("Running createrepo_c -v(q) $groupcmd $rootdir/$reponame/" );
-	        $verbosity_arg = "-v";
+                $verbosity_arg = "-v";
+            } else  {
+                $verbosity_arg = "-q";
             }
             run_systemcmd( 'createrepo_c', $verbosity_arg, $groupcmd, " $rootdir/$reponame/" );
             if( $ret == 0 and $gpgkey )  {
