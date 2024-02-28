@@ -6,7 +6,6 @@
 # perl-YAML-Tiny
 # perl-Getopt-Long-Descriptive (bunch of dependencies)
 
-use 5.010;                                      # to get 'given-when' functionality
 use warnings;
 use Carp;
 use strict;
