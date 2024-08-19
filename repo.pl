@@ -336,9 +336,9 @@ sub test  {
     @links = sort { $b cmp $a } @repoconfig;
     foreach my $link ( @links )  {
         chomp $link;
-        if( $link =~ /^\s*rootdir:/x )  { next; }           # skip rootdir config line
+        if( $link =~ /^\s*rootdir:/x || $link =~ /^\s*$/ )  { next; }   # skip rootdir config line or if line is either empty or just containing whitespace
         my ( $source, $repo ) = split( /\//x, $link );
-        chomp $repo if $repo;                               # trim trailing spaces and newline (since 'repo' is the last element on the line)
+        chomp $repo if $repo;                                           # trim trailing spaces and newline (since 'repo' is the last element on the line)
         $repo =~ s/\s+$//g;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEVDEBUG)  {
@@ -403,9 +403,9 @@ sub prod  {
     @links = sort { $b cmp $a } @prodconfig;
     foreach my $link ( @links )  {
         chomp $link;
-        if( $link =~ /^\s*rootdir:/x )  { next; }           # skip rootdir config line
+        if( $link =~ /^\s*rootdir:/x || $link =~ /^\s*$/ )  { next; }   # skip rootdir config line or if line is either empty or just containing whitespace
         my ( $source, $repo ) = split( /\//x, $link );
-        chomp $repo if $repo;                               # trim trailing spaces and newline (since 'repo' is the last element on the line)
+        chomp $repo if $repo;                                           # trim trailing spaces and newline (since 'repo' is the last element on the line)
         $repo =~ s/\s+$//g;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             # don't allow links not also specified in test repo configuration
