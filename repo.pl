@@ -181,7 +181,7 @@ sub usage  {
     print "                      The optional arguments 'repoid' refers to one or more ids in the configuration to fetch.\n";
     print "                      If none provided all external sources are retrieved.\n";
     print "'test'             :  Set up test repository (testrepofile required)\n";
-    print "'prod'             :  Set up prod repository (test- _and_ prod-repofiles required)\n";
+    print "'prod'             :  Set up prod repository (prod-repofiles required)\n";
     print "\n";
     return 0;
 }
@@ -227,8 +227,8 @@ if ( $opt->dist )  { $DIST = $opt->dist; }
 $command = $ARGV[0] ? $ARGV[0] : "sync";                    # let 'sync' be the default command
 switch( $command )  {
     case 'sync'  { shift; sync(@ARGV); }
-    case 'test'  { test('test'); }
-    case 'prod'  { prod(); }
+    case 'test'  { setup('test'); }
+    case 'prod'  { setup('prod'); }
     else         { print "\nUnknown command!\n"; usage(); }
 };
 
@@ -300,13 +300,13 @@ sub sync  {
 
 
 # command: test -- update pointers for test repository
-sub test  {
+sub setup  {
     my $mode = $_[0];
     my %oldrepo;
     my @repoconfig;
     my $cfgyaml;
     my @links;
-    my ( $rootdir, $testdir, $snapshotdir );
+    my ( $rootdir, $modedir, $snapshotdir );
 
     if( ! -e $modeconfig{"$mode"}{'config'} )  {
         error( "$modeconfig{\"$mode\"}{'name'} command but no appropriate configuration available." );
@@ -324,13 +324,13 @@ sub test  {
         error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
         croak "Cannot continue, quitting.";
     }
-    $testdir = "$rootdir/$modeconfig{\"$mode\"}{'dir'}";
+    $modedir = "$rootdir/$modeconfig{\"$mode\"}{'dir'}";
     $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
-    reporoot( "$testdir" );
-    if ( ! -d "$testdir/$DIST" )  {
-        mkdir "$testdir/$DIST";
+    reporoot( "$modedir" );
+    if ( ! -d "$modedir/$DIST" )  {
+        mkdir "$modedir/$DIST";
     } else  {
-        clean_symlinks( "$testdir/$DIST" );
+        clean_symlinks( "$modedir/$DIST" );
     }
 
     @links = sort { $b cmp $a } @repoconfig;
@@ -342,86 +342,12 @@ sub test  {
         $repo =~ s/\s+$//g;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEVDEBUG)  {
-                info( "Linking $testdir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
+                info( "Linking $modedir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
             } else  {
                 if( -d "$snapshotdir/$source/$DIST/$repo" )  {
-                    symlink "$snapshotdir/$source/$DIST/$repo", "$testdir/$DIST/$repo" || error("Could not make link for repo $repo");
+                    symlink "$snapshotdir/$source/$DIST/$repo", "$modedir/$DIST/$repo" || error("Could not make link for repo $repo");
                 } else  {
                     error(" Source directory for $repo does not exist ($snapshotdir/$source/$DIST/$repo) - skipping");
-                }
-            }
-            $oldrepo{"$repo"} = $TRUE;
-        }
-    }
-    return 0;
-}
-
-
-# command: prod -- update pointers for production repository
-# a requirement for production links is that the link is in the test config
-# (assumed meaning the link has been tested)
-sub prod  {
-    my @prodconfig;                                         # test repo config
-    my @testconfig;                                         # prod repo config
-    my $cfgyaml;                                            # generic configuration
-    my %oldrepo;
-    my @links;
-    my ( $rootdir, $proddir, $snapshotdir );
-
-    if( ! -e $modeconfig{'test'}{'config'} )  {
-        error( "'prod' command but no test configuration available!" );
-        error( "Maybe provide one as an argument?" );
-        usage();
-        croak "Quitting!";
-    }
-    if( ! -e $modeconfig{'prod'}{'config'} )  {
-        error( "'prod' command but no production configuration available!" );
-        error( "Maybe provide one as an argument?" );
-        usage();
-        croak "Quitting!";
-    }
-    info( "Updating prod...\n" );
-    @prodconfig = readlines( $modeconfig{'prod'}{'config'}  );
-    @testconfig = readlines( $modeconfig{'test'}{'config'}  );
-    $cfgyaml    = YAML::Tiny->read( "$CONFIG" );
-
-    # Ensure existence of root repositiory directory
-	$rootdir = $cfgyaml->[0]{'repodir'};
-    if( ! $rootdir )  {
-        error( "No root (top level) directory specified in configuration ($CONFIG)!\n" );
-        croak "Cannot continue, quitting.";
-    }
-    $proddir = "$rootdir/$modeconfig{'prod'}{'dir'}";
-    $snapshotdir = "$rootdir/$SNAPSHOTSDIR";
-    reporoot( "$proddir" );
-    if ( ! -d "$proddir/$DIST" )  {
-        mkdir "$proddir/$DIST";
-    } else  {
-        clean_symlinks( "$proddir/$DIST" );
-    }
-
-    @links = sort { $b cmp $a } @prodconfig;
-    foreach my $link ( @links )  {
-        chomp $link;
-        if( $link =~ /^\s*rootdir:/x || $link =~ /^\s*$/ )  { next; }   # skip rootdir config line or if line is either empty or just containing whitespace
-        my ( $source, $repo ) = split( /\//x, $link );
-        chomp $repo if $repo;                                           # trim trailing spaces and newline (since 'repo' is the last element on the line)
-        $repo =~ s/\s+$//g;
-        if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
-            # don't allow links not also specified in test repo configuration
-            if( ( ! grep { /$link/x } @testconfig) )  {
-#my $a = any { /$link/x } ("a", "b");
-#            if( none { /$link/x } @testconfig )  {
-                error( "$link is not allowed (not listed in test configuration: $modeconfig{'test'}{'config'})" );
-                next;
-            }
-            if( $DEVDEBUG )  {
-                info( "Linking $proddir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
-            } else  {
-                if( -d "$snapshotdir/$source/$DIST/$repo" )  {
-                    symlink "$snapshotdir/$source/$DIST/$repo", "$proddir/$DIST/$repo" || error( "Could not make link for repo $repo" );
-                } else  {
-                    error( "Source directory for $repo does not exist ($snapshotdir/$source/$DIST/$repo) - skipping" );
                 }
             }
             $oldrepo{"$repo"} = $TRUE;
