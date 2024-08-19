@@ -338,7 +338,8 @@ sub test  {
         chomp $link;
         if( $link =~ /^\s*rootdir:/x )  { next; }           # skip rootdir config line
         my ( $source, $repo ) = split( /\//x, $link );
-        chomp $repo if $repo;
+        chomp $repo if $repo;                               # trim trailing spaces and newline (since 'repo' is the last element on the line)
+        $repo =~ s/\s+$//g;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             if($DEVDEBUG)  {
                 info( "Linking $testdir/$DIST/$repo from $snapshotdir/$source/$DIST/$repo" );
@@ -402,9 +403,10 @@ sub prod  {
     @links = sort { $b cmp $a } @prodconfig;
     foreach my $link ( @links )  {
         chomp $link;
-        if( $link =~ /^\s*rootdir:/x )  { next; }             # skip rootdir config line
+        if( $link =~ /^\s*rootdir:/x )  { next; }           # skip rootdir config line
         my ( $source, $repo ) = split( /\//x, $link );
-        chomp $repo if $repo;
+        chomp $repo if $repo;                               # trim trailing spaces and newline (since 'repo' is the last element on the line)
+        $repo =~ s/\s+$//g;
         if( $repo and $source and ( ! $oldrepo{"$repo"} ) )  {
             # don't allow links not also specified in test repo configuration
             if( ( ! grep { /$link/x } @testconfig) )  {
