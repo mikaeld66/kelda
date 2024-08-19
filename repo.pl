@@ -299,7 +299,7 @@ sub sync  {
 }
 
 
-# command: test -- update pointers for test repository
+# command: setup -- update pointers for repository sent as parameter ("mode")
 sub setup  {
     my $mode = $_[0];
     my %oldrepo;
